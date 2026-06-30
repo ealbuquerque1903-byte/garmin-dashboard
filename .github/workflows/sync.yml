@@ -19,7 +19,7 @@ jobs:
           python-version: "3.11"
 
       - name: Instalar dependências
-        run: pip install garminconnect jinja2
+        run: pip install garminconnect garth jinja2
 
       - name: Restaurar tokens do Garmin
         run: |
