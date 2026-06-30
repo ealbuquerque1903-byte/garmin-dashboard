@@ -30,25 +30,28 @@ DB_FILE    = Path(__file__).parent / "garmin" / "history.json"
 
 def load_client():
     from garminconnect import Garmin
+    import garth as garth_mod
     token_path = Path(TOKEN_DIR)
-    print(f"Procurando tokens em: {token_path.resolve()}")
-    if token_path.exists():
-        files = list(token_path.iterdir())
-        print(f"Arquivos encontrados: {[f.name for f in files]}")
-        for f in files:
-            try:
-                content = f.read_text()
-                print(f"  {f.name}: {len(content)} bytes, começa com: {content[:40]!r}")
-            except Exception as e:
-                print(f"  {f.name}: erro ao ler — {e}")
+    if not token_path.exists():
+        print("Diretório .garmin_tokens não encontrado.")
+        raise SystemExit(1)
+    try:
+        garth_mod.resume(str(token_path))
         client = Garmin()
-        try:
-            client.login(tokenstore=TOKEN_DIR)
-            return client
-        except Exception as e:
-            print(f"Erro ao carregar tokens: {type(e).__name__}: {e}")
-    else:
-        print("Diretório .garmin_tokens não existe.")
+        client.garth = garth_mod
+        # testa a conexão
+        client.get_full_name()
+        return client
+    except Exception as e1:
+        print(f"garth.resume falhou: {e1}")
+    try:
+        client = Garmin()
+        client.garth.load(str(token_path))
+        client.get_full_name()
+        return client
+    except Exception as e2:
+        print(f"garth.load falhou: {e2}")
+    print("Não foi possível autenticar com os tokens salvos.")
     raise SystemExit(1)
 
 # ── formatters ───────────────────────────────────────────────────────────────
