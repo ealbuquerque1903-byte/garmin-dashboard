@@ -241,12 +241,18 @@ async function startSync() {
 
     if (res.status === 204) {
       btn.textContent = '✓ Sincronizando...';
-      status.textContent = 'Aguarde ~2 min';
-      // Recarrega a página após 3 minutos
-      setTimeout(() => {
-        status.textContent = 'Recarregando...';
-        window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
-      }, 180000);
+      let secs = 180;
+      const timer = setInterval(() => {
+        secs--;
+        if (secs <= 0) {
+          clearInterval(timer);
+          status.textContent = 'Recarregando...';
+          window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
+        } else {
+          const m = Math.floor(secs / 60), s = secs % 60;
+          status.textContent = `${m}:${String(s).padStart(2,'0')} restantes`;
+        }
+      }, 1000);
     } else if (res.status === 401) {
       localStorage.removeItem('gh_pat');
       btn.disabled = false;
