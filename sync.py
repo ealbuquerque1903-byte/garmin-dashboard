@@ -30,14 +30,25 @@ DB_FILE    = Path(__file__).parent / "garmin" / "history.json"
 
 def load_client():
     from garminconnect import Garmin
-    if Path(TOKEN_DIR).exists():
+    token_path = Path(TOKEN_DIR)
+    print(f"Procurando tokens em: {token_path.resolve()}")
+    if token_path.exists():
+        files = list(token_path.iterdir())
+        print(f"Arquivos encontrados: {[f.name for f in files]}")
+        for f in files:
+            try:
+                content = f.read_text()
+                print(f"  {f.name}: {len(content)} bytes, começa com: {content[:40]!r}")
+            except Exception as e:
+                print(f"  {f.name}: erro ao ler — {e}")
         client = Garmin()
         try:
             client.login(tokenstore=TOKEN_DIR)
             return client
-        except Exception:
-            pass
-    print("Token não encontrado. Rode login.py primeiro.")
+        except Exception as e:
+            print(f"Erro ao carregar tokens: {type(e).__name__}: {e}")
+    else:
+        print("Diretório .garmin_tokens não existe.")
     raise SystemExit(1)
 
 # ── formatters ───────────────────────────────────────────────────────────────
