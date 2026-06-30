@@ -7,49 +7,82 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Belo Horizonte Corrida — GarminAI</title>
   <script src="../static/chart.min.js"></script>
-  <script src="../static/marked.min.js"></script>
   <style>
     :root {
       --bg: #0f1117; --card: #1a1d27; --card2: #22263a;
       --accent: #00d4ff; --green: #22c55e; --yellow: #eab308;
       --red: #ef4444; --orange: #f97316; --purple: #7c3aed;
       --text: #e2e8f0; --muted: #64748b; --border: #2d3748;
-      --nav-h: 56px;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --safe-l: env(safe-area-inset-left, 0px);
+      --safe-r: env(safe-area-inset-right, 0px);
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
     html { -webkit-text-size-adjust: 100%; }
     body {
       background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       font-size: 14px; line-height: 1.6;
-      padding-bottom: env(safe-area-inset-bottom);
+      padding-bottom: calc(80px + var(--safe-bot));
+      min-height: 100dvh;
     }
     a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
 
-    /* ── Nav ── */
-    nav {
+    /* ── Top nav (desktop only) ── */
+    .top-nav {
       background: var(--card); border-bottom: 1px solid var(--border);
-      padding: 0 16px; padding-left: max(16px, env(safe-area-inset-left));
-      padding-right: max(16px, env(safe-area-inset-right));
+      padding: 0 20px;
+      padding-left: max(20px, var(--safe-l));
+      padding-right: max(20px, var(--safe-r));
       display: flex; align-items: center; gap: 16px;
-      height: var(--nav-h); position: sticky; top: 0; z-index: 100;
+      height: 52px; position: sticky; top: 0; z-index: 100;
     }
-    .nav-brand { font-size: 17px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; white-space: nowrap; }
+    .nav-brand { font-size: 17px; font-weight: 700; color: var(--accent); white-space: nowrap; }
     .nav-brand span { color: var(--text); }
-    nav a { color: var(--muted); font-size: 13px; }
     .nav-spacer { flex: 1; }
 
-    /* ── Sync button ── */
-    #sync-btn {
-      background: var(--accent); color: #000; border: none;
-      padding: 8px 14px; border-radius: 20px; font-size: 13px;
-      font-weight: 700; cursor: pointer; white-space: nowrap;
-      display: flex; align-items: center; gap: 6px;
-      transition: opacity .2s; min-height: 36px;
+    /* ── Bottom tab bar (mobile) ── */
+    .bottom-bar {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 8px 0;
+      padding-bottom: max(8px, var(--safe-bot));
+      z-index: 200;
+      grid-template-columns: repeat(4, 1fr);
     }
-    #sync-btn:disabled { opacity: .5; cursor: default; }
-    #sync-status { font-size: 12px; color: var(--muted); white-space: nowrap; display:none; }
+    .tab-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; padding: 6px 4px; border: none; background: none;
+      color: var(--muted); font-size: 10px; font-weight: 600;
+      cursor: pointer; min-height: 52px; width: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab-btn .icon { font-size: 22px; line-height: 1; }
+    .tab-btn.sync-tab { color: var(--accent); }
+    .tab-btn.sync-tab .icon { font-size: 26px; }
+    .tab-btn:active { opacity: 0.6; }
+
+    /* ── Back button ── */
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--accent); font-size: 15px; font-weight: 500;
+      padding: 8px 0; margin-bottom: 8px;
+      background: none; border: none; cursor: pointer;
+    }
+    .back-btn:active { opacity: 0.6; }
+
+    /* ── Sync status banner ── */
+    #sync-banner {
+      display: none; position: fixed;
+      top: 52px; left: 0; right: 0; z-index: 150;
+      background: var(--accent); color: #000;
+      text-align: center; padding: 10px 16px;
+      font-weight: 700; font-size: 14px;
+    }
 
     /* ── Layout ── */
     .container { max-width: 1280px; margin: 0 auto; padding: 16px; }
@@ -65,7 +98,7 @@
     .card-value { font-size: 26px; font-weight: 700; }
     .card-unit { font-size: 13px; color: var(--muted); margin-left: 3px; }
 
-    /* ── Grids (desktop) ── */
+    /* ── Grids ── */
     .grid { display: grid; gap: 12px; }
     .grid-2 { grid-template-columns: repeat(2, 1fr); }
     .grid-3 { grid-template-columns: repeat(3, 1fr); }
@@ -73,18 +106,24 @@
     .grid-6 { grid-template-columns: repeat(6, 1fr); }
     .col-span-2 { grid-column: span 2; }
 
-    /* ── Mobile overrides ── */
-    @media (max-width: 600px) {
-      .grid-6, .grid-4 { grid-template-columns: repeat(3, 1fr); }
+    /* ── Mobile ── */
+    @media (max-width: 700px) {
+      .top-nav { display: none; }
+      .bottom-bar { display: grid; }
+      body { padding-bottom: calc(72px + var(--safe-bot)); }
+      .container { padding: 12px; }
+      .grid-6 { grid-template-columns: repeat(3, 1fr); }
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
       .grid-3 { grid-template-columns: repeat(2, 1fr); }
       .grid-2 { grid-template-columns: 1fr; }
       .col-span-2 { grid-column: span 1; }
       .card-value { font-size: 20px; }
       .card { padding: 12px; }
       .hide-mobile { display: none !important; }
+      .page-title { font-size: 17px; margin-bottom: 12px; }
     }
     @media (max-width: 380px) {
-      .grid-6, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-6 { grid-template-columns: repeat(2, 1fr); }
     }
 
     /* ── Badge ── */
@@ -101,98 +140,104 @@
     }
     .activity-row:last-child { border-bottom: none; }
     .activity-icon {
-      width: 38px; height: 38px; border-radius: 10px;
+      width: 40px; height: 40px; border-radius: 10px;
       background: var(--card2); display: flex; align-items: center;
-      justify-content: center; font-size: 18px; flex-shrink: 0;
+      justify-content: center; font-size: 20px; flex-shrink: 0;
     }
     .activity-name { font-weight: 600; font-size: 14px; }
     .activity-meta { color: var(--muted); font-size: 12px; margin-top: 1px; }
-    .activity-stats { margin-left: auto; display: flex; gap: 16px; text-align: right; }
+    .activity-stats { margin-left: auto; display: flex; gap: 14px; text-align: right; }
     .stat-label { font-size: 10px; color: var(--muted); }
     .stat-value { font-size: 13px; font-weight: 600; }
-    @media (max-width: 500px) {
-      .activity-stats { gap: 10px; }
-      .activity-stats .hide-mobile { display: none; }
-    }
 
     /* ── Chart ── */
     .chart-wrap { position: relative; height: 200px; }
     .chart-wrap-tall { height: 240px; }
-    @media (max-width: 600px) {
-      .chart-wrap { height: 160px; }
-      .chart-wrap-tall { height: 180px; }
+    @media (max-width: 700px) {
+      .chart-wrap { height: 150px; }
+      .chart-wrap-tall { height: 170px; }
     }
 
     /* ── Table ── */
     .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
-    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 460px; }
     th { text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--border); }
-    td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
+    td { padding: 10px; border-bottom: 1px solid var(--border); }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: var(--card2); }
 
     /* ── Zone bar ── */
     .zone-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 8px 0; }
 
-    /* ── Modal (token setup) ── */
+    /* ── Modal ── */
     .modal-bg {
-      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
-      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8);
+      z-index: 300; align-items: flex-end; justify-content: center;
     }
     .modal-bg.open { display: flex; }
     .modal {
-      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
-      padding: 24px; max-width: 440px; width: 100%;
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      padding: 24px 24px calc(24px + var(--safe-bot));
+      width: 100%; max-width: 500px;
     }
-    .modal h3 { font-size: 16px; margin-bottom: 8px; }
-    .modal p { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+    @media (min-width: 701px) {
+      .modal-bg { align-items: center; }
+      .modal { border-radius: 16px; max-width: 440px; padding: 24px; }
+    }
+    .modal h3 { font-size: 17px; margin-bottom: 8px; }
+    .modal p { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
     .modal input {
       width: 100%; background: var(--card2); border: 1px solid var(--border);
-      color: var(--text); border-radius: 8px; padding: 10px 12px;
-      font-size: 13px; margin-bottom: 12px; font-family: monospace;
+      color: var(--text); border-radius: 10px; padding: 12px 14px;
+      font-size: 15px; margin-bottom: 12px; font-family: monospace;
+      -webkit-appearance: none;
     }
-    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
-    .btn { padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; }
+    .modal-btns { display: flex; gap: 10px; }
+    .btn { padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; flex: 1; min-height: 48px; }
     .btn-primary { background: var(--accent); color: #000; }
     .btn-ghost { background: var(--card2); color: var(--muted); }
 
-    /* ── Print ── */
-    @media print {
-      nav, #sync-btn, .modal-bg, .no-print { display: none !important; }
-      body { background: white; color: #111; }
-      .card { border: 1px solid #ddd; break-inside: avoid; }
+    /* ── Desktop nav buttons ── */
+    .nav-btn {
+      background: var(--accent); color: #000; border: none;
+      padding: 8px 16px; border-radius: 20px; font-size: 13px;
+      font-weight: 700; cursor: pointer; white-space: nowrap; min-height: 36px;
+    }
+    .nav-btn-ghost {
+      background: var(--card2); color: var(--muted); border: none;
+      padding: 7px 14px; border-radius: 20px; font-size: 12px;
+      font-weight: 600; cursor: pointer; white-space: nowrap; min-height: 36px;
     }
 
-    /* ── Scrollbar ── */
+    /* ── Print ── */
+    @media print {
+      .top-nav, .bottom-bar, .modal-bg, .back-btn, #sync-banner { display: none !important; }
+      body { background: white; color: #111; padding: 0; }
+      .card { border: 1px solid #ddd; break-inside: avoid; background: white; }
+      .card-title, .section-title, .muted { color: #666 !important; }
+      a { color: #000; }
+    }
+
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   </style>
 </head>
 <body>
 
-<nav>
+<!-- Nav desktop -->
+<nav class="top-nav">
   <div class="nav-brand">⌚ Garmin<span>AI</span></div>
-  <a href="../index.html" class="hide-mobile">Dashboard</a>
+  <a href="../index.html" style="color:var(--muted);font-size:13px;">Dashboard</a>
   <div class="nav-spacer"></div>
-  <span id="sync-status"></span>
-  <button id="sync-btn" onclick="startSync()">↻ Atualizar</button>
-  <button onclick="window.print()" class="btn btn-ghost no-print hide-mobile" style="font-size:12px;padding:7px 12px;">🖨️ PDF</button>
+  <button class="nav-btn" onclick="startSync()">↻ Atualizar</button>
+  <button class="nav-btn-ghost" onclick="window.print()">🖨️ PDF</button>
 </nav>
 
-<!-- Modal de configuração do token -->
-<div class="modal-bg" id="token-modal">
-  <div class="modal">
-    <h3>🔑 Configurar acesso</h3>
-    <p>Para atualizar os dados, é necessário um <strong>GitHub Personal Access Token</strong> com permissão <code>workflow</code>. Ele fica salvo só no seu aparelho.</p>
-    <p>Acesse <strong>github.com → Settings → Developer settings → Personal access tokens → Fine-grained</strong> e crie um token com permissão <em>Actions: Read and write</em> neste repositório.</p>
-    <input type="password" id="token-input" placeholder="ghp_... ou github_pat_...">
-    <div class="modal-btns">
-      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
-      <button class="btn btn-primary" onclick="saveToken()">Salvar</button>
-    </div>
-  </div>
-</div>
+<!-- Banner de sincronização -->
+<div id="sync-banner"></div>
 
+<!-- Conteúdo -->
 <div class="container">
 
 
@@ -429,17 +474,55 @@
 
 </div>
 
+<!-- Bottom bar mobile -->
+<div class="bottom-bar">
+  <button class="tab-btn" onclick="goBack()">
+    <span class="icon">←</span>
+    <span>Voltar</span>
+  </button>
+  <button class="tab-btn" onclick="window.location.href='../index.html'">
+    <span class="icon">📊</span>
+    <span>Dashboard</span>
+  </button>
+  <button class="tab-btn sync-tab" id="mobile-sync-btn" onclick="startSync()">
+    <span class="icon" id="mobile-sync-icon">↻</span>
+    <span id="mobile-sync-label">Atualizar</span>
+  </button>
+  <button class="tab-btn" onclick="window.print()">
+    <span class="icon">🖨️</span>
+    <span>PDF</span>
+  </button>
+</div>
+
+<!-- Modal token -->
+<div class="modal-bg" id="token-modal">
+  <div class="modal">
+    <h3>🔑 Configurar acesso</h3>
+    <p>Crie um <strong>GitHub Token</strong> em:<br>
+    github.com → Settings → Developer settings → Personal access tokens (classic)<br>
+    Escopos necessários: <strong>repo</strong> + <strong>workflow</strong></p>
+    <input type="password" id="token-input" placeholder="ghp_..." autocomplete="off" autocorrect="off" autocapitalize="none">
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveToken()">Salvar</button>
+    </div>
+  </div>
+</div>
+
 <script>
 Chart.defaults.color = '#64748b';
 Chart.defaults.borderColor = '#2d3748';
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 Chart.defaults.font.size = 11;
 
-// ── GitHub sync button ──────────────────────────────────────────────────────
 const REPO_OWNER = 'ealbuquerque1903-byte';
 const REPO_NAME  = 'garmin-dashboard';
 const WORKFLOW   = 'sync.yml';
 
+function goBack() {
+  if (window.history.length > 1) window.history.back();
+  else window.location.href = '../index.html';
+}
 function getToken() { return localStorage.getItem('gh_pat'); }
 function closeModal() { document.getElementById('token-modal').classList.remove('open'); }
 function saveToken() {
@@ -450,60 +533,56 @@ function saveToken() {
   startSync();
 }
 
+function setSyncState(label, icon, running) {
+  const banner = document.getElementById('sync-banner');
+  const mIcon  = document.getElementById('mobile-sync-icon');
+  const mLabel = document.getElementById('mobile-sync-label');
+  const mBtn   = document.getElementById('mobile-sync-btn');
+  if (banner) { banner.textContent = label; banner.style.display = running ? 'block' : 'none'; }
+  if (mIcon)  mIcon.textContent  = icon;
+  if (mLabel) mLabel.textContent = label;
+  if (mBtn)   mBtn.disabled = running;
+}
+
 async function startSync() {
   const token = getToken();
   if (!token) { document.getElementById('token-modal').classList.add('open'); return; }
 
-  const btn    = document.getElementById('sync-btn');
-  const status = document.getElementById('sync-status');
-  btn.disabled = true;
-  btn.textContent = '↻ Iniciando...';
-  status.style.display = 'inline';
-  status.textContent = '';
+  setSyncState('Iniciando...', '⏳', true);
 
   try {
     const res = await fetch(
       `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW}/dispatches`,
-      {
-        method: 'POST',
+      { method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ref: 'main' })
-      }
+        body: JSON.stringify({ ref: 'main' }) }
     );
-
     if (res.status === 204) {
-      btn.textContent = '✓ Sincronizando...';
       let secs = 180;
+      setSyncState(`${Math.floor(secs/60)}:${String(secs%60).padStart(2,'0')}`, '⏳', true);
       const timer = setInterval(() => {
         secs--;
         if (secs <= 0) {
           clearInterval(timer);
-          status.textContent = 'Recarregando...';
+          setSyncState('Recarregando...', '↻', true);
           window.location.href = window.location.href.split('?')[0] + '?t=' + Date.now();
         } else {
-          const m = Math.floor(secs / 60), s = secs % 60;
-          status.textContent = `${m}:${String(s).padStart(2,'0')} restantes`;
+          const m = Math.floor(secs/60), s = secs % 60;
+          setSyncState(`${m}:${String(s).padStart(2,'0')}`, '⏳', true);
         }
       }, 1000);
     } else if (res.status === 401) {
       localStorage.removeItem('gh_pat');
-      btn.disabled = false;
-      btn.textContent = '↻ Atualizar';
-      status.textContent = 'Token inválido';
+      setSyncState('Token inválido', '↻', false);
+      setTimeout(() => setSyncState('Atualizar', '↻', false), 3000);
       document.getElementById('token-modal').classList.add('open');
     } else {
       throw new Error(`HTTP ${res.status}`);
     }
-  } catch (e) {
-    btn.disabled = false;
-    btn.textContent = '↻ Atualizar';
-    status.textContent = 'Erro: ' + e.message;
+  } catch(e) {
+    setSyncState('Erro: ' + e.message, '↻', false);
+    setTimeout(() => setSyncState('Atualizar', '↻', false), 4000);
   }
-}
-
-function renderMarkdown(id) {
-  const el = document.getElementById(id);
-  if (el && el.dataset.md) el.innerHTML = marked.parse(el.dataset.md);
 }
 </script>
 
