@@ -1,0 +1,12 @@
+{
+  "name": "Garmin Dashboard",
+  "short_name": "Garmin",
+  "description": "Dashboard de treinos e bem-estar Garmin",
+  "start_url": "/garmin-dashboard/",
+  "display": "standalone",
+  "background_color": "#0f1117",
+  "theme_color": "#0f1117",
+  "icons": [
+    { "src": "icon-180.png", "sizes": "180x180", "type": "image/png" }
+  ]
+}

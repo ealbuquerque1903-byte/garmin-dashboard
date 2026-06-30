@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="180" height="180" viewBox="0 0 180 180">
+  <rect width="180" height="180" rx="40" fill="#0f1117"/>
+  <circle cx="90" cy="90" r="60" fill="none" stroke="#00d4ff" stroke-width="10"/>
+  <circle cx="90" cy="90" r="45" fill="none" stroke="#1a1d27" stroke-width="8"/>
+  <text x="90" y="80" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="28" font-weight="700" fill="#00d4ff">⌚</text>
+  <text x="90" y="115" text-anchor="middle" font-family="-apple-system,sans-serif" font-size="18" font-weight="700" fill="#e2e8f0">Garmin</text>
+</svg>
