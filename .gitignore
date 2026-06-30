@@ -4,6 +4,10 @@
 *.token
 sync.log
 
+# Pasta garmin — só history.json é versionado
+garmin/*.md
+garmin/data.json
+
 # Python cache
 __pycache__/
 *.pyc

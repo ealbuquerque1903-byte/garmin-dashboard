@@ -2,81 +2,66 @@
 {% block title %}Dashboard — GarminAI{% endblock %}
 
 {% block content %}
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
   <h1 class="page-title" style="margin:0;">📊 Dashboard</h1>
-  <span style="color:var(--muted);font-size:12px;">Atualizado automaticamente todo dia às 6h</span>
 </div>
 
-<!-- TODAY SUMMARY -->
+<!-- HOJE -->
 {% if today %}
 <div class="section-title">Hoje</div>
-<div class="grid grid-6" style="margin-bottom:28px;">
-
+<div class="grid grid-6" style="margin-bottom:20px;">
   <div class="card">
     <div class="card-title">💤 Sono</div>
     <div class="card-value">{{ today.sleep_score or '—' }}<span class="card-unit">/100</span></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:4px;">{{ today.sleep_duration or '—' }}</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">{{ today.sleep_duration or '—' }}</div>
   </div>
-
   <div class="card">
-    <div class="card-title">💓 HRV Noturna</div>
+    <div class="card-title">💓 HRV</div>
     <div class="card-value">{{ today.hrv_avg or '—' }}<span class="card-unit">ms</span></div>
-    <div style="margin-top:6px;">
+    <div style="margin-top:4px;">
       {% set s = today.hrv_status or '' %}
-      {% if s == 'BALANCED' %}<span class="badge badge-green">Equilibrado</span>
-      {% elif s == 'UNBALANCED' %}<span class="badge badge-red">Desequilibrado</span>
+      {% if s == 'BALANCED' %}<span class="badge badge-green">OK</span>
+      {% elif s == 'UNBALANCED' %}<span class="badge badge-red">Baixo</span>
       {% elif s == 'LOW' %}<span class="badge badge-yellow">Baixo</span>
       {% else %}<span class="badge badge-blue">{{ s or '—' }}</span>{% endif %}
     </div>
   </div>
-
   <div class="card">
-    <div class="card-title">❤️ FC Repouso</div>
+    <div class="card-title">❤️ FC Rep.</div>
     <div class="card-value">{{ today.rhr or '—' }}<span class="card-unit">bpm</span></div>
   </div>
-
   <div class="card">
-    <div class="card-title">⚡ Body Battery</div>
+    <div class="card-title">⚡ Battery</div>
     <div class="card-value">{{ today.body_battery_charged or '—' }}<span class="card-unit">%</span></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:4px;">Drenado: {{ today.body_battery_drained or '—' }}</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">−{{ today.body_battery_drained or '—' }}</div>
   </div>
-
   <div class="card">
     <div class="card-title">😤 Estresse</div>
     <div class="card-value">{{ today.stress_avg or '—' }}<span class="card-unit">/100</span></div>
   </div>
-
   <div class="card">
     <div class="card-title">🎯 Prontidão</div>
     <div class="card-value">{{ today.training_readiness_score or '—' }}<span class="card-unit">/100</span></div>
-    <div style="margin-top:6px;">
+    <div style="margin-top:4px;">
       {% set lvl = today.training_readiness_level or '' %}
       {% if lvl == 'HIGH' %}<span class="badge badge-green">Alta</span>
-      {% elif lvl == 'MODERATE' %}<span class="badge badge-yellow">Moderada</span>
+      {% elif lvl == 'MODERATE' %}<span class="badge badge-yellow">Mod.</span>
       {% elif lvl == 'LOW' %}<span class="badge badge-red">Baixa</span>
       {% else %}<span class="badge badge-blue">{{ lvl or '—' }}</span>{% endif %}
     </div>
   </div>
 </div>
-
-<!-- AI analysis today -->
-{% if today.ai_analysis %}
-<div class="ai-box" style="margin-bottom:28px;">
-  <div class="ai-header">🤖 Análise de IA — Recuperação de Hoje</div>
-  <div class="ai-content" id="ai-today" data-md="{{ today.ai_analysis | e }}"></div>
-</div>
-{% endif %}
 {% endif %}
 
-<!-- TREND CHARTS -->
+<!-- GRÁFICOS TENDÊNCIA -->
 <div class="section-title">Tendência — Últimos 30 Dias</div>
-<div class="grid grid-2" style="margin-bottom:28px;">
+<div class="grid grid-2" style="margin-bottom:20px;">
   <div class="card">
-    <div class="card-title">HRV noturna & FC repouso</div>
+    <div class="card-title">HRV & FC Repouso</div>
     <div class="chart-wrap"><canvas id="chartHrv"></canvas></div>
   </div>
   <div class="card">
-    <div class="card-title">Qualidade do sono & Prontidão</div>
+    <div class="card-title">Sono & Prontidão</div>
     <div class="chart-wrap"><canvas id="chartSleep"></canvas></div>
   </div>
   <div class="card">
@@ -84,27 +69,24 @@
     <div class="chart-wrap"><canvas id="chartBB"></canvas></div>
   </div>
   <div class="card">
-    <div class="card-title">Carga de treino & Distância</div>
+    <div class="card-title">Carga de Treino & Distância</div>
     <div class="chart-wrap"><canvas id="chartLoad"></canvas></div>
   </div>
 </div>
 
-<!-- RECENT ACTIVITIES -->
+<!-- ATIVIDADES -->
 <div class="section-title">Atividades Recentes</div>
-<div class="card" style="margin-bottom:28px;">
+<div class="card" style="margin-bottom:20px;">
   {% for act in activities %}
   {% set type = act.type or '' %}
   {% set icon = '🏃' if 'running' in type else ('🚴' if 'cycling' in type or 'biking' in type else ('🏊' if 'swimming' in type else '🏋️')) %}
   <div class="activity-row">
     <div class="activity-icon">{{ icon }}</div>
-    <div>
-      <div class="activity-name">
+    <div style="min-width:0;">
+      <div class="activity-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
         <a href="activity/{{ act.id }}.html">{{ act.name }}</a>
       </div>
-      <div class="activity-meta">
-        {{ act.date }} &nbsp;·&nbsp; {{ act.duration or '—' }}
-        {% if act.distance_km %}&nbsp;·&nbsp; {{ act.distance_km }} km{% endif %}
-      </div>
+      <div class="activity-meta">{{ act.date }} · {{ act.duration or '—' }}{% if act.distance_km %} · {{ act.distance_km }} km{% endif %}</div>
     </div>
     <div class="activity-stats">
       <div>
@@ -112,154 +94,105 @@
         <div class="stat-value">{{ act.pace or '—' }}</div>
       </div>
       <div>
-        <div class="stat-label">FC méd</div>
-        <div class="stat-value">{{ act.avg_hr or '—' }} <span style="font-size:10px;color:var(--muted)">bpm</span></div>
+        <div class="stat-label">FC</div>
+        <div class="stat-value">{{ act.avg_hr or '—' }}</div>
       </div>
-      <div>
+      <div class="hide-mobile">
         <div class="stat-label">Carga</div>
         <div class="stat-value">{{ (act.training_load | round(0) | int) if act.training_load else '—' }}</div>
       </div>
-      <div>
+      <div class="hide-mobile">
         <div class="stat-label">VO2max</div>
         <div class="stat-value">{{ act.vo2max or '—' }}</div>
       </div>
     </div>
   </div>
   {% else %}
-  <div style="color:var(--muted);padding:24px;text-align:center;">
-    Nenhuma atividade ainda. Rode o sync.py para importar seus treinos.
-  </div>
+  <div style="color:var(--muted);padding:24px;text-align:center;">Nenhuma atividade. Clique em Atualizar.</div>
   {% endfor %}
 </div>
 
-<!-- WELLNESS HISTORY -->
+<!-- HISTÓRICO BEM-ESTAR -->
 <div class="section-title">Histórico de Bem-Estar</div>
 <div class="card">
-  <table>
-    <thead>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th><th>Sono</th><th>HRV</th><th>FC Rep.</th>
+          <th>Battery</th><th>Estresse</th><th>Prontidão</th><th>Passos</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for day, w in wellness %}
       <tr>
-        <th>Data</th><th>Sono</th><th>HRV</th><th>FC Rep.</th>
-        <th>Body Battery</th><th>Estresse</th><th>Prontidão</th><th>Passos</th>
+        <td><a href="wellness/{{ day }}.html">{{ day }}</a></td>
+        <td>
+          {% if w.sleep_score %}
+          <span style="color:{% if w.sleep_score >= 80 %}var(--green){% elif w.sleep_score >= 60 %}var(--yellow){% else %}var(--red){% endif %}">{{ w.sleep_score }}/100</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ w.hrv_avg or '—' }} ms</td>
+        <td>{{ w.rhr or '—' }} bpm</td>
+        <td>{{ w.body_battery_charged or '—' }}%</td>
+        <td>{{ w.stress_avg or '—' }}</td>
+        <td>
+          {% if w.training_readiness_score %}
+          <span style="color:{% if w.training_readiness_score >= 70 %}var(--green){% elif w.training_readiness_score >= 40 %}var(--yellow){% else %}var(--red){% endif %}">{{ w.training_readiness_score }}/100</span>
+          {% else %}—{% endif %}
+        </td>
+        <td>{{ '{:,}'.format(w.steps).replace(',','.') if w.steps else '—' }}</td>
       </tr>
-    </thead>
-    <tbody>
-    {% for day, w in wellness %}
-    <tr>
-      <td><a href="wellness/{{ day }}.html">{{ day }}</a></td>
-      <td>
-        {% if w.sleep_score %}
-          <span style="color:{% if w.sleep_score >= 80 %}var(--green){% elif w.sleep_score >= 60 %}var(--yellow){% else %}var(--red){% endif %}">
-            {{ w.sleep_score }}/100
-          </span>
-        {% else %}—{% endif %}
-      </td>
-      <td>{{ w.hrv_avg or '—' }} ms</td>
-      <td>{{ w.rhr or '—' }} bpm</td>
-      <td>{{ w.body_battery_charged or '—' }}%</td>
-      <td>{{ w.stress_avg or '—' }}</td>
-      <td>
-        {% if w.training_readiness_score %}
-          <span style="color:{% if w.training_readiness_score >= 70 %}var(--green){% elif w.training_readiness_score >= 40 %}var(--yellow){% else %}var(--red){% endif %}">
-            {{ w.training_readiness_score }}/100
-          </span>
-        {% else %}—{% endif %}
-      </td>
-      <td>{{ '{:,}'.format(w.steps) if w.steps else '—' }}</td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
-const DATES   = {{ chart_dates | safe }};
-const HRV     = {{ chart_hrv | safe }};
-const RHR     = {{ chart_rhr | safe }};
-const SLEEP   = {{ chart_sleep | safe }};
-const BB      = {{ chart_bb | safe }};
-const READY   = {{ chart_readiness | safe }};
+const DATES = {{ chart_dates | safe }};
+const HRV   = {{ chart_hrv | safe }};
+const RHR   = {{ chart_rhr | safe }};
+const SLEEP = {{ chart_sleep | safe }};
+const BB    = {{ chart_bb | safe }};
+const READY = {{ chart_readiness | safe }};
 const A_DATES = {{ act_dates | safe }};
 const A_LOADS = {{ act_loads | safe }};
 const A_DISTS = {{ act_dists | safe }};
 
-const commonOpts = {
+const base = {
   responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { position: 'top', labels: { boxWidth: 10, padding: 12 } } },
-  scales: {
-    x: { grid: { color: '#1e293b' }, ticks: { maxTicksLimit: 8 } },
-    y: { grid: { color: '#1e293b' } }
-  },
+  plugins: { legend: { position: 'top', labels: { boxWidth: 8, padding: 10, font: { size: 11 } } } },
+  scales: { x: { grid: { color: '#1e293b' }, ticks: { maxTicksLimit: 6 } },
+             y: { grid: { color: '#1e293b' } } },
   elements: { point: { radius: 2, hoverRadius: 5 } }
 };
 
-// HRV + RHR
-new Chart(document.getElementById('chartHrv'), {
-  type: 'line',
-  data: {
-    labels: DATES,
-    datasets: [
-      { label: 'HRV (ms)', data: HRV, borderColor: '#00d4ff', backgroundColor: '#00d4ff22',
-        fill: true, tension: 0.4, yAxisID: 'y' },
-      { label: 'FC Repouso (bpm)', data: RHR, borderColor: '#ef4444', backgroundColor: 'transparent',
-        tension: 0.4, yAxisID: 'y2' },
-    ]
-  },
-  options: { ...commonOpts, scales: { ...commonOpts.scales,
-    y:  { ...commonOpts.scales.y, position: 'left',  title: { display: true, text: 'HRV ms' } },
-    y2: { ...commonOpts.scales.y, position: 'right', title: { display: true, text: 'bpm' }, grid: { drawOnChartArea: false } }
-  }}
-});
+new Chart(document.getElementById('chartHrv'), { type: 'line', data: { labels: DATES, datasets: [
+  { label: 'HRV (ms)', data: HRV, borderColor: '#00d4ff', backgroundColor: '#00d4ff22', fill: true, tension: 0.4, yAxisID: 'y' },
+  { label: 'FC Rep (bpm)', data: RHR, borderColor: '#ef4444', tension: 0.4, yAxisID: 'y2' }
+]}, options: { ...base, scales: { ...base.scales,
+  y:  { ...base.scales.y, position: 'left' },
+  y2: { ...base.scales.y, position: 'right', grid: { drawOnChartArea: false } }
+}}});
 
-// Sleep + Readiness
-new Chart(document.getElementById('chartSleep'), {
-  type: 'line',
-  data: {
-    labels: DATES,
-    datasets: [
-      { label: 'Sono /100', data: SLEEP, borderColor: '#7c3aed', backgroundColor: '#7c3aed22',
-        fill: true, tension: 0.4 },
-      { label: 'Prontidão /100', data: READY, borderColor: '#22c55e', backgroundColor: 'transparent',
-        tension: 0.4 },
-    ]
-  },
-  options: { ...commonOpts, scales: { ...commonOpts.scales,
-    y: { ...commonOpts.scales.y, min: 0, max: 100 }
-  }}
-});
+new Chart(document.getElementById('chartSleep'), { type: 'line', data: { labels: DATES, datasets: [
+  { label: 'Sono /100', data: SLEEP, borderColor: '#7c3aed', backgroundColor: '#7c3aed22', fill: true, tension: 0.4 },
+  { label: 'Prontidão /100', data: READY, borderColor: '#22c55e', tension: 0.4 }
+]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, min: 0, max: 100 } } }});
 
-// Body Battery
-new Chart(document.getElementById('chartBB'), {
-  type: 'bar',
-  data: {
-    labels: DATES,
-    datasets: [
-      { label: 'Carregado (%)', data: BB, backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1 },
-    ]
-  },
-  options: { ...commonOpts, scales: { ...commonOpts.scales,
-    y: { ...commonOpts.scales.y, min: 0, max: 100 }
-  }}
-});
+new Chart(document.getElementById('chartBB'), { type: 'bar', data: { labels: DATES, datasets: [
+  { label: 'Battery (%)', data: BB, backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1 }
+]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, min: 0, max: 100 } } }});
 
-// Training Load + Distance
-new Chart(document.getElementById('chartLoad'), {
-  type: 'bar',
-  data: {
-    labels: A_DATES,
-    datasets: [
-      { label: 'Carga de treino', data: A_LOADS, backgroundColor: '#f9731688', borderColor: '#f97316', borderWidth: 1, yAxisID: 'y' },
-      { label: 'Distância (km)',  data: A_DISTS, type: 'line', borderColor: '#00d4ff',
-        backgroundColor: 'transparent', tension: 0.4, yAxisID: 'y2' },
-    ]
-  },
-  options: { ...commonOpts, scales: { ...commonOpts.scales,
-    y:  { ...commonOpts.scales.y, position: 'left',  title: { display: true, text: 'Carga' } },
-    y2: { ...commonOpts.scales.y, position: 'right', title: { display: true, text: 'km' }, grid: { drawOnChartArea: false } }
-  }}
-});
-
-renderMarkdown('ai-today');
+new Chart(document.getElementById('chartLoad'), { type: 'bar', data: { labels: A_DATES, datasets: [
+  { label: 'Carga', data: A_LOADS, backgroundColor: '#f9731688', borderColor: '#f97316', borderWidth: 1, yAxisID: 'y' },
+  { label: 'Dist (km)', data: A_DISTS, type: 'line', borderColor: '#00d4ff', tension: 0.4, yAxisID: 'y2' }
+]}, options: { ...base, scales: { ...base.scales,
+  y:  { ...base.scales.y, position: 'left' },
+  y2: { ...base.scales.y, position: 'right', grid: { drawOnChartArea: false } }
+}}});
 </script>
 {% endblock %}

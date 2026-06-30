@@ -2,297 +2,255 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>Dashboard — GarminAI</title>
   <script src="static/chart.min.js"></script>
   <script src="static/marked.min.js"></script>
   <style>
     :root {
-      --bg: #0f1117;
-      --card: #1a1d27;
-      --card2: #22263a;
-      --accent: #00d4ff;
-      --accent2: #7c3aed;
-      --green: #22c55e;
-      --yellow: #eab308;
-      --red: #ef4444;
-      --orange: #f97316;
-      --text: #e2e8f0;
-      --muted: #64748b;
-      --border: #2d3748;
+      --bg: #0f1117; --card: #1a1d27; --card2: #22263a;
+      --accent: #00d4ff; --green: #22c55e; --yellow: #eab308;
+      --red: #ef4444; --orange: #f97316; --purple: #7c3aed;
+      --text: #e2e8f0; --muted: #64748b; --border: #2d3748;
+      --nav-h: 56px;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
+    html { -webkit-text-size-adjust: 100%; }
     body {
-      background: var(--bg);
-      color: var(--text);
+      background: var(--bg); color: var(--text);
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      font-size: 14px;
-      line-height: 1.6;
+      font-size: 14px; line-height: 1.6;
+      padding-bottom: env(safe-area-inset-bottom);
     }
     a { color: var(--accent); text-decoration: none; }
     a:hover { text-decoration: underline; }
 
-    /* Nav */
+    /* ── Nav ── */
     nav {
-      background: var(--card);
-      border-bottom: 1px solid var(--border);
-      padding: 0 24px;
-      display: flex;
-      align-items: center;
-      gap: 32px;
-      height: 56px;
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0 16px; padding-left: max(16px, env(safe-area-inset-left));
+      padding-right: max(16px, env(safe-area-inset-right));
+      display: flex; align-items: center; gap: 16px;
+      height: var(--nav-h); position: sticky; top: 0; z-index: 100;
     }
-    .nav-brand {
-      font-size: 18px;
-      font-weight: 700;
-      color: var(--accent);
-      letter-spacing: -0.5px;
-    }
+    .nav-brand { font-size: 17px; font-weight: 700; color: var(--accent); letter-spacing: -0.5px; white-space: nowrap; }
     .nav-brand span { color: var(--text); }
     nav a { color: var(--muted); font-size: 13px; }
-    nav a:hover { color: var(--text); text-decoration: none; }
+    .nav-spacer { flex: 1; }
 
-    /* Layout */
-    .container { max-width: 1280px; margin: 0 auto; padding: 24px; }
-    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+    /* ── Sync button ── */
+    #sync-btn {
+      background: var(--accent); color: #000; border: none;
+      padding: 8px 14px; border-radius: 20px; font-size: 13px;
+      font-weight: 700; cursor: pointer; white-space: nowrap;
+      display: flex; align-items: center; gap: 6px;
+      transition: opacity .2s; min-height: 36px;
+    }
+    #sync-btn:disabled { opacity: .5; cursor: default; }
+    #sync-status { font-size: 12px; color: var(--muted); white-space: nowrap; display:none; }
+
+    /* ── Layout ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 16px; }
+    .page-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
     .section-title {
-      font-size: 13px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 12px;
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--muted); margin-bottom: 10px;
     }
 
-    /* Cards */
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 20px;
-    }
-    .card-title {
-      font-size: 12px;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--muted);
-      margin-bottom: 8px;
-    }
-    .card-value {
-      font-size: 28px;
-      font-weight: 700;
-      color: var(--text);
-    }
-    .card-unit { font-size: 14px; color: var(--muted); margin-left: 4px; }
+    /* ── Cards ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+    .card-value { font-size: 26px; font-weight: 700; }
+    .card-unit { font-size: 13px; color: var(--muted); margin-left: 3px; }
 
-    /* Grid */
-    .grid { display: grid; gap: 16px; }
+    /* ── Grids (desktop) ── */
+    .grid { display: grid; gap: 12px; }
     .grid-2 { grid-template-columns: repeat(2, 1fr); }
     .grid-3 { grid-template-columns: repeat(3, 1fr); }
     .grid-4 { grid-template-columns: repeat(4, 1fr); }
     .grid-6 { grid-template-columns: repeat(6, 1fr); }
     .col-span-2 { grid-column: span 2; }
-    .col-span-3 { grid-column: span 3; }
 
-    /* Status badge */
-    .badge {
-      display: inline-block;
-      padding: 2px 10px;
-      border-radius: 20px;
-      font-size: 11px;
-      font-weight: 600;
+    /* ── Mobile overrides ── */
+    @media (max-width: 600px) {
+      .grid-6, .grid-4 { grid-template-columns: repeat(3, 1fr); }
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+      .grid-2 { grid-template-columns: 1fr; }
+      .col-span-2 { grid-column: span 1; }
+      .card-value { font-size: 20px; }
+      .card { padding: 12px; }
+      .hide-mobile { display: none !important; }
     }
+    @media (max-width: 380px) {
+      .grid-6, .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    /* ── Badge ── */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
     .badge-green  { background: #14532d; color: var(--green); }
     .badge-yellow { background: #713f12; color: var(--yellow); }
     .badge-red    { background: #7f1d1d; color: var(--red); }
     .badge-blue   { background: #1e3a5f; color: var(--accent); }
-    .badge-purple { background: #3b0764; color: #c084fc; }
 
-    /* Activity list */
+    /* ── Activity row ── */
     .activity-row {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 14px 0;
-      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
     }
     .activity-row:last-child { border-bottom: none; }
     .activity-icon {
-      width: 40px; height: 40px;
-      border-radius: 10px;
-      background: var(--card2);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
+      width: 38px; height: 38px; border-radius: 10px;
+      background: var(--card2); display: flex; align-items: center;
+      justify-content: center; font-size: 18px; flex-shrink: 0;
     }
     .activity-name { font-weight: 600; font-size: 14px; }
-    .activity-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
-    .activity-stats {
-      margin-left: auto;
-      display: flex;
-      gap: 24px;
-      text-align: right;
+    .activity-meta { color: var(--muted); font-size: 12px; margin-top: 1px; }
+    .activity-stats { margin-left: auto; display: flex; gap: 16px; text-align: right; }
+    .stat-label { font-size: 10px; color: var(--muted); }
+    .stat-value { font-size: 13px; font-weight: 600; }
+    @media (max-width: 500px) {
+      .activity-stats { gap: 10px; }
+      .activity-stats .hide-mobile { display: none; }
     }
-    .stat-label { font-size: 11px; color: var(--muted); }
-    .stat-value { font-size: 14px; font-weight: 600; }
 
-    /* Chart container */
-    .chart-wrap {
-      position: relative;
-      height: 220px;
+    /* ── Chart ── */
+    .chart-wrap { position: relative; height: 200px; }
+    .chart-wrap-tall { height: 240px; }
+    @media (max-width: 600px) {
+      .chart-wrap { height: 160px; }
+      .chart-wrap-tall { height: 180px; }
     }
-    .chart-wrap-tall { height: 280px; }
 
-    /* AI analysis */
-    .ai-box {
-      background: linear-gradient(135deg, #1a1d27 0%, #1e1b3a 100%);
-      border: 1px solid #3b0764;
-      border-radius: 12px;
-      padding: 20px;
-    }
-    .ai-header {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 16px;
-      font-size: 13px;
-      font-weight: 600;
-      color: #c084fc;
-    }
-    .ai-content h2 { font-size: 14px; margin: 16px 0 6px; color: var(--accent); }
-    .ai-content h3 { font-size: 13px; margin: 12px 0 4px; color: var(--text); }
-    .ai-content p  { color: var(--muted); font-size: 13px; line-height: 1.7; margin-bottom: 8px; }
-    .ai-content ul { color: var(--muted); font-size: 13px; padding-left: 20px; margin-bottom: 8px; }
-    .ai-content li { margin-bottom: 4px; }
-    .ai-content strong { color: var(--text); }
-
-    /* Lap table */
-    table { width: 100%; border-collapse: collapse; font-size: 13px; }
-    th {
-      text-align: left;
-      padding: 8px 12px;
-      font-size: 11px;
-      text-transform: uppercase;
-      letter-spacing: 0.06em;
-      color: var(--muted);
-      border-bottom: 1px solid var(--border);
-    }
-    td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 480px; }
+    th { text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    td { padding: 10px 10px; border-bottom: 1px solid var(--border); }
     tr:last-child td { border-bottom: none; }
     tr:hover td { background: var(--card2); }
 
-    /* HR zone bar */
-    .zone-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 8px 0; }
+    /* ── Zone bar ── */
+    .zone-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 8px 0; }
 
-    /* Print */
+    /* ── Modal (token setup) ── */
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.7);
+      z-index: 200; align-items: center; justify-content: center; padding: 20px;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+      padding: 24px; max-width: 440px; width: 100%;
+    }
+    .modal h3 { font-size: 16px; margin-bottom: 8px; }
+    .modal p { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 16px; }
+    .modal input {
+      width: 100%; background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 8px; padding: 10px 12px;
+      font-size: 13px; margin-bottom: 12px; font-family: monospace;
+    }
+    .modal-btns { display: flex; gap: 8px; justify-content: flex-end; }
+    .btn { padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; border: none; cursor: pointer; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-ghost { background: var(--card2); color: var(--muted); }
+
+    /* ── Print ── */
     @media print {
-      nav, .no-print { display: none !important; }
-      body { background: white; color: #111; font-size: 12px; }
+      nav, #sync-btn, .modal-bg, .no-print { display: none !important; }
+      body { background: white; color: #111; }
       .card { border: 1px solid #ddd; break-inside: avoid; }
-      .ai-box { border: 1px solid #c084fc; background: #faf5ff; }
-      .ai-content p, .ai-content li { color: #333; }
-      .ai-content h2 { color: #7c3aed; }
-      .page-title { color: #111; }
-      .card-value { color: #111; }
-      .activity-name { color: #111; }
-      canvas { max-width: 100%; }
     }
 
-    /* Scrollbar */
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: var(--bg); }
-    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
   </style>
 </head>
 <body>
+
 <nav>
   <div class="nav-brand">⌚ Garmin<span>AI</span></div>
-  <a href="index.html">Dashboard</a>
-  <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
-    <button onclick="window.print()" class="no-print"
-      style="background:var(--card2);border:1px solid var(--border);color:var(--text);
-             padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;">
-      🖨️ Exportar PDF
-    </button>
-  </div>
+  <a href="index.html" class="hide-mobile">Dashboard</a>
+  <div class="nav-spacer"></div>
+  <span id="sync-status"></span>
+  <button id="sync-btn" onclick="startSync()">↻ Atualizar</button>
+  <button onclick="window.print()" class="btn btn-ghost no-print hide-mobile" style="font-size:12px;padding:7px 12px;">🖨️ PDF</button>
 </nav>
-<div class="container">
 
-<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
-  <h1 class="page-title" style="margin:0;">📊 Dashboard</h1>
-  <span style="color:var(--muted);font-size:12px;">Atualizado automaticamente todo dia às 6h</span>
+<!-- Modal de configuração do token -->
+<div class="modal-bg" id="token-modal">
+  <div class="modal">
+    <h3>🔑 Configurar acesso</h3>
+    <p>Para atualizar os dados, é necessário um <strong>GitHub Personal Access Token</strong> com permissão <code>workflow</code>. Ele fica salvo só no seu aparelho.</p>
+    <p>Acesse <strong>github.com → Settings → Developer settings → Personal access tokens → Fine-grained</strong> e crie um token com permissão <em>Actions: Read and write</em> neste repositório.</p>
+    <input type="password" id="token-input" placeholder="ghp_... ou github_pat_...">
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveToken()">Salvar</button>
+    </div>
+  </div>
 </div>
 
-<!-- TODAY SUMMARY -->
+<div class="container">
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:8px;">
+  <h1 class="page-title" style="margin:0;">📊 Dashboard</h1>
+</div>
+
+<!-- HOJE -->
 
 <div class="section-title">Hoje</div>
-<div class="grid grid-6" style="margin-bottom:28px;">
-
+<div class="grid grid-6" style="margin-bottom:20px;">
   <div class="card">
     <div class="card-title">💤 Sono</div>
     <div class="card-value">78<span class="card-unit">/100</span></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:4px;">6h 51min</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">6h 51min</div>
   </div>
-
   <div class="card">
-    <div class="card-title">💓 HRV Noturna</div>
+    <div class="card-title">💓 HRV</div>
     <div class="card-value">41.0<span class="card-unit">ms</span></div>
-    <div style="margin-top:6px;">
+    <div style="margin-top:4px;">
       
-      <span class="badge badge-green">Equilibrado</span>
+      <span class="badge badge-green">OK</span>
       
     </div>
   </div>
-
   <div class="card">
-    <div class="card-title">❤️ FC Repouso</div>
+    <div class="card-title">❤️ FC Rep.</div>
     <div class="card-value">53<span class="card-unit">bpm</span></div>
   </div>
-
   <div class="card">
-    <div class="card-title">⚡ Body Battery</div>
+    <div class="card-title">⚡ Battery</div>
     <div class="card-value">50<span class="card-unit">%</span></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:4px;">Drenado: 1</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">−1</div>
   </div>
-
   <div class="card">
     <div class="card-title">😤 Estresse</div>
     <div class="card-value">18<span class="card-unit">/100</span></div>
   </div>
-
   <div class="card">
     <div class="card-title">🎯 Prontidão</div>
     <div class="card-value">69<span class="card-unit">/100</span></div>
-    <div style="margin-top:6px;">
+    <div style="margin-top:4px;">
       
-      <span class="badge badge-yellow">Moderada</span>
+      <span class="badge badge-yellow">Mod.</span>
       
     </div>
   </div>
 </div>
 
-<!-- AI analysis today -->
 
-<div class="ai-box" style="margin-bottom:28px;">
-  <div class="ai-header">🤖 Análise de IA — Recuperação de Hoje</div>
-  <div class="ai-content" id="ai-today" data-md="*Análise não disponível: &#34;Could not resolve authentication method. Expected one of api_key, auth_token, or credentials to be set. Or for one of the `X-Api-Key` or `Authorization` headers to be explicitly omitted&#34;*"></div>
-</div>
-
-
-
-<!-- TREND CHARTS -->
+<!-- GRÁFICOS TENDÊNCIA -->
 <div class="section-title">Tendência — Últimos 30 Dias</div>
-<div class="grid grid-2" style="margin-bottom:28px;">
+<div class="grid grid-2" style="margin-bottom:20px;">
   <div class="card">
-    <div class="card-title">HRV noturna & FC repouso</div>
+    <div class="card-title">HRV & FC Repouso</div>
     <div class="chart-wrap"><canvas id="chartHrv"></canvas></div>
   </div>
   <div class="card">
-    <div class="card-title">Qualidade do sono & Prontidão</div>
+    <div class="card-title">Sono & Prontidão</div>
     <div class="chart-wrap"><canvas id="chartSleep"></canvas></div>
   </div>
   <div class="card">
@@ -300,27 +258,24 @@
     <div class="chart-wrap"><canvas id="chartBB"></canvas></div>
   </div>
   <div class="card">
-    <div class="card-title">Carga de treino & Distância</div>
+    <div class="card-title">Carga de Treino & Distância</div>
     <div class="chart-wrap"><canvas id="chartLoad"></canvas></div>
   </div>
 </div>
 
-<!-- RECENT ACTIVITIES -->
+<!-- ATIVIDADES -->
 <div class="section-title">Atividades Recentes</div>
-<div class="card" style="margin-bottom:28px;">
+<div class="card" style="margin-bottom:20px;">
   
   
   
   <div class="activity-row">
     <div class="activity-icon">🏃</div>
-    <div>
-      <div class="activity-name">
+    <div style="min-width:0;">
+      <div class="activity-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
         <a href="activity/23416863448.html">Belo Horizonte Corrida</a>
       </div>
-      <div class="activity-meta">
-        2026-06-29 &nbsp;·&nbsp; 33min 26s
-        &nbsp;·&nbsp; 5.11 km
-      </div>
+      <div class="activity-meta">2026-06-29 · 33min 26s · 5.11 km</div>
     </div>
     <div class="activity-stats">
       <div>
@@ -328,14 +283,14 @@
         <div class="stat-value">6:32 /km</div>
       </div>
       <div>
-        <div class="stat-label">FC méd</div>
-        <div class="stat-value">138.0 <span style="font-size:10px;color:var(--muted)">bpm</span></div>
+        <div class="stat-label">FC</div>
+        <div class="stat-value">138.0</div>
       </div>
-      <div>
+      <div class="hide-mobile">
         <div class="stat-label">Carga</div>
         <div class="stat-value">72</div>
       </div>
-      <div>
+      <div class="hide-mobile">
         <div class="stat-label">VO2max</div>
         <div class="stat-value">46.0</div>
       </div>
@@ -346,14 +301,11 @@
   
   <div class="activity-row">
     <div class="activity-icon">🏃</div>
-    <div>
-      <div class="activity-name">
+    <div style="min-width:0;">
+      <div class="activity-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
         <a href="activity/23407529187.html">Belo Horizonte Corrida</a>
       </div>
-      <div class="activity-meta">
-        2026-06-28 &nbsp;·&nbsp; 46min 36s
-        &nbsp;·&nbsp; 7.09 km
-      </div>
+      <div class="activity-meta">2026-06-28 · 46min 36s · 7.09 km</div>
     </div>
     <div class="activity-stats">
       <div>
@@ -361,14 +313,14 @@
         <div class="stat-value">6:34 /km</div>
       </div>
       <div>
-        <div class="stat-label">FC méd</div>
-        <div class="stat-value">136.0 <span style="font-size:10px;color:var(--muted)">bpm</span></div>
+        <div class="stat-label">FC</div>
+        <div class="stat-value">136.0</div>
       </div>
-      <div>
+      <div class="hide-mobile">
         <div class="stat-label">Carga</div>
         <div class="stat-value">84</div>
       </div>
-      <div>
+      <div class="hide-mobile">
         <div class="stat-label">VO2max</div>
         <div class="stat-value">46.0</div>
       </div>
@@ -379,14 +331,11 @@
   
   <div class="activity-row">
     <div class="activity-icon">🏃</div>
-    <div>
-      <div class="activity-name">
+    <div style="min-width:0;">
+      <div class="activity-name" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
         <a href="activity/23397046791.html">Belo Horizonte Corrida</a>
       </div>
-      <div class="activity-meta">
-        2026-06-27 &nbsp;·&nbsp; 1h 14min
-        &nbsp;·&nbsp; 13.61 km
-      </div>
+      <div class="activity-meta">2026-06-27 · 1h 14min · 13.61 km</div>
     </div>
     <div class="activity-stats">
       <div>
@@ -394,14 +343,14 @@
         <div class="stat-value">5:28 /km</div>
       </div>
       <div>
-        <div class="stat-label">FC méd</div>
-        <div class="stat-value">157.0 <span style="font-size:10px;color:var(--muted)">bpm</span></div>
+        <div class="stat-label">FC</div>
+        <div class="stat-value">157.0</div>
       </div>
-      <div>
+      <div class="hide-mobile">
         <div class="stat-label">Carga</div>
         <div class="stat-value">241</div>
       </div>
-      <div>
+      <div class="hide-mobile">
         <div class="stat-label">VO2max</div>
         <div class="stat-value">46.0</div>
       </div>
@@ -410,192 +359,198 @@
   
 </div>
 
-<!-- WELLNESS HISTORY -->
+<!-- HISTÓRICO BEM-ESTAR -->
 <div class="section-title">Histórico de Bem-Estar</div>
 <div class="card">
-  <table>
-    <thead>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Data</th><th>Sono</th><th>HRV</th><th>FC Rep.</th>
+          <th>Battery</th><th>Estresse</th><th>Prontidão</th><th>Passos</th>
+        </tr>
+      </thead>
+      <tbody>
+      
       <tr>
-        <th>Data</th><th>Sono</th><th>HRV</th><th>FC Rep.</th>
-        <th>Body Battery</th><th>Estresse</th><th>Prontidão</th><th>Passos</th>
+        <td><a href="wellness/2026-06-30.html">2026-06-30</a></td>
+        <td>
+          
+          <span style="color:var(--yellow)">78/100</span>
+          
+        </td>
+        <td>41.0 ms</td>
+        <td>53 bpm</td>
+        <td>50%</td>
+        <td>18</td>
+        <td>
+          
+          <span style="color:var(--yellow)">69/100</span>
+          
+        </td>
+        <td>217</td>
       </tr>
-    </thead>
-    <tbody>
-    
-    <tr>
-      <td><a href="wellness/2026-06-30.html">2026-06-30</a></td>
-      <td>
-        
-          <span style="color:var(--yellow)">
-            78/100
-          </span>
-        
-      </td>
-      <td>41.0 ms</td>
-      <td>53 bpm</td>
-      <td>50%</td>
-      <td>18</td>
-      <td>
-        
-          <span style="color:var(--yellow)">
-            69/100
-          </span>
-        
-      </td>
-      <td>217</td>
-    </tr>
-    
-    <tr>
-      <td><a href="wellness/2026-06-29.html">2026-06-29</a></td>
-      <td>
-        
-          <span style="color:var(--green)">
-            81/100
-          </span>
-        
-      </td>
-      <td>34.0 ms</td>
-      <td>58 bpm</td>
-      <td>50%</td>
-      <td>34</td>
-      <td>
-        
-          <span style="color:var(--yellow)">
-            51/100
-          </span>
-        
-      </td>
-      <td>10,762</td>
-    </tr>
-    
-    <tr>
-      <td><a href="wellness/2026-06-28.html">2026-06-28</a></td>
-      <td>
-        
-          <span style="color:var(--yellow)">
-            70/100
-          </span>
-        
-      </td>
-      <td>37.0 ms</td>
-      <td>56 bpm</td>
-      <td>58%</td>
-      <td>32</td>
-      <td>
-        
-          <span style="color:var(--red)">
-            25/100
-          </span>
-        
-      </td>
-      <td>12,713</td>
-    </tr>
-    
-    </tbody>
-  </table>
+      
+      <tr>
+        <td><a href="wellness/2026-06-29.html">2026-06-29</a></td>
+        <td>
+          
+          <span style="color:var(--green)">81/100</span>
+          
+        </td>
+        <td>34.0 ms</td>
+        <td>58 bpm</td>
+        <td>50%</td>
+        <td>34</td>
+        <td>
+          
+          <span style="color:var(--yellow)">51/100</span>
+          
+        </td>
+        <td>10.762</td>
+      </tr>
+      
+      <tr>
+        <td><a href="wellness/2026-06-28.html">2026-06-28</a></td>
+        <td>
+          
+          <span style="color:var(--yellow)">70/100</span>
+          
+        </td>
+        <td>37.0 ms</td>
+        <td>56 bpm</td>
+        <td>58%</td>
+        <td>32</td>
+        <td>
+          
+          <span style="color:var(--red)">25/100</span>
+          
+        </td>
+        <td>12.713</td>
+      </tr>
+      
+      </tbody>
+    </table>
+  </div>
 </div>
 
 </div>
+
 <script>
 Chart.defaults.color = '#64748b';
 Chart.defaults.borderColor = '#2d3748';
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
 Chart.defaults.font.size = 11;
 
+// ── GitHub sync button ──────────────────────────────────────────────────────
+const REPO_OWNER = 'ealbuquerque1903-byte';
+const REPO_NAME  = 'garmin-dashboard';
+const WORKFLOW   = 'sync.yml';
+
+function getToken() { return localStorage.getItem('gh_pat'); }
+function closeModal() { document.getElementById('token-modal').classList.remove('open'); }
+function saveToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) return;
+  localStorage.setItem('gh_pat', t);
+  closeModal();
+  startSync();
+}
+
+async function startSync() {
+  const token = getToken();
+  if (!token) { document.getElementById('token-modal').classList.add('open'); return; }
+
+  const btn    = document.getElementById('sync-btn');
+  const status = document.getElementById('sync-status');
+  btn.disabled = true;
+  btn.textContent = '↻ Iniciando...';
+  status.style.display = 'inline';
+  status.textContent = '';
+
+  try {
+    const res = await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW}/dispatches`,
+      {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: 'main' })
+      }
+    );
+
+    if (res.status === 204) {
+      btn.textContent = '✓ Sincronizando...';
+      status.textContent = 'Aguarde ~2 min';
+      // Recarrega a página após 3 minutos
+      setTimeout(() => {
+        status.textContent = 'Recarregando...';
+        window.location.reload();
+      }, 180000);
+    } else if (res.status === 401) {
+      localStorage.removeItem('gh_pat');
+      btn.disabled = false;
+      btn.textContent = '↻ Atualizar';
+      status.textContent = 'Token inválido';
+      document.getElementById('token-modal').classList.add('open');
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch (e) {
+    btn.disabled = false;
+    btn.textContent = '↻ Atualizar';
+    status.textContent = 'Erro: ' + e.message;
+  }
+}
+
 function renderMarkdown(id) {
   const el = document.getElementById(id);
-  if (el) el.innerHTML = marked.parse(el.dataset.md || '');
+  if (el && el.dataset.md) el.innerHTML = marked.parse(el.dataset.md);
 }
 </script>
 
 <script>
-const DATES   = ["2026-06-28", "2026-06-29", "2026-06-30"];
-const HRV     = [37.0, 34.0, 41.0];
-const RHR     = [56, 58, 53];
-const SLEEP   = [70, 81, 78];
-const BB      = [58, 50, 50];
-const READY   = [25, 51, 69];
+const DATES = ["2026-06-28", "2026-06-29", "2026-06-30"];
+const HRV   = [37.0, 34.0, 41.0];
+const RHR   = [56, 58, 53];
+const SLEEP = [70, 81, 78];
+const BB    = [58, 50, 50];
+const READY = [25, 51, 69];
 const A_DATES = ["2026-06-27", "2026-06-28", "2026-06-29"];
 const A_LOADS = [240.51011657714844, 84.29072570800781, 72.3348388671875];
 const A_DISTS = [13.61, 7.09, 5.11];
 
-const commonOpts = {
+const base = {
   responsive: true, maintainAspectRatio: false,
-  plugins: { legend: { position: 'top', labels: { boxWidth: 10, padding: 12 } } },
-  scales: {
-    x: { grid: { color: '#1e293b' }, ticks: { maxTicksLimit: 8 } },
-    y: { grid: { color: '#1e293b' } }
-  },
+  plugins: { legend: { position: 'top', labels: { boxWidth: 8, padding: 10, font: { size: 11 } } } },
+  scales: { x: { grid: { color: '#1e293b' }, ticks: { maxTicksLimit: 6 } },
+             y: { grid: { color: '#1e293b' } } },
   elements: { point: { radius: 2, hoverRadius: 5 } }
 };
 
-// HRV + RHR
-new Chart(document.getElementById('chartHrv'), {
-  type: 'line',
-  data: {
-    labels: DATES,
-    datasets: [
-      { label: 'HRV (ms)', data: HRV, borderColor: '#00d4ff', backgroundColor: '#00d4ff22',
-        fill: true, tension: 0.4, yAxisID: 'y' },
-      { label: 'FC Repouso (bpm)', data: RHR, borderColor: '#ef4444', backgroundColor: 'transparent',
-        tension: 0.4, yAxisID: 'y2' },
-    ]
-  },
-  options: { ...commonOpts, scales: { ...commonOpts.scales,
-    y:  { ...commonOpts.scales.y, position: 'left',  title: { display: true, text: 'HRV ms' } },
-    y2: { ...commonOpts.scales.y, position: 'right', title: { display: true, text: 'bpm' }, grid: { drawOnChartArea: false } }
-  }}
-});
+new Chart(document.getElementById('chartHrv'), { type: 'line', data: { labels: DATES, datasets: [
+  { label: 'HRV (ms)', data: HRV, borderColor: '#00d4ff', backgroundColor: '#00d4ff22', fill: true, tension: 0.4, yAxisID: 'y' },
+  { label: 'FC Rep (bpm)', data: RHR, borderColor: '#ef4444', tension: 0.4, yAxisID: 'y2' }
+]}, options: { ...base, scales: { ...base.scales,
+  y:  { ...base.scales.y, position: 'left' },
+  y2: { ...base.scales.y, position: 'right', grid: { drawOnChartArea: false } }
+}}});
 
-// Sleep + Readiness
-new Chart(document.getElementById('chartSleep'), {
-  type: 'line',
-  data: {
-    labels: DATES,
-    datasets: [
-      { label: 'Sono /100', data: SLEEP, borderColor: '#7c3aed', backgroundColor: '#7c3aed22',
-        fill: true, tension: 0.4 },
-      { label: 'Prontidão /100', data: READY, borderColor: '#22c55e', backgroundColor: 'transparent',
-        tension: 0.4 },
-    ]
-  },
-  options: { ...commonOpts, scales: { ...commonOpts.scales,
-    y: { ...commonOpts.scales.y, min: 0, max: 100 }
-  }}
-});
+new Chart(document.getElementById('chartSleep'), { type: 'line', data: { labels: DATES, datasets: [
+  { label: 'Sono /100', data: SLEEP, borderColor: '#7c3aed', backgroundColor: '#7c3aed22', fill: true, tension: 0.4 },
+  { label: 'Prontidão /100', data: READY, borderColor: '#22c55e', tension: 0.4 }
+]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, min: 0, max: 100 } } }});
 
-// Body Battery
-new Chart(document.getElementById('chartBB'), {
-  type: 'bar',
-  data: {
-    labels: DATES,
-    datasets: [
-      { label: 'Carregado (%)', data: BB, backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1 },
-    ]
-  },
-  options: { ...commonOpts, scales: { ...commonOpts.scales,
-    y: { ...commonOpts.scales.y, min: 0, max: 100 }
-  }}
-});
+new Chart(document.getElementById('chartBB'), { type: 'bar', data: { labels: DATES, datasets: [
+  { label: 'Battery (%)', data: BB, backgroundColor: '#22c55e88', borderColor: '#22c55e', borderWidth: 1 }
+]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, min: 0, max: 100 } } }});
 
-// Training Load + Distance
-new Chart(document.getElementById('chartLoad'), {
-  type: 'bar',
-  data: {
-    labels: A_DATES,
-    datasets: [
-      { label: 'Carga de treino', data: A_LOADS, backgroundColor: '#f9731688', borderColor: '#f97316', borderWidth: 1, yAxisID: 'y' },
-      { label: 'Distância (km)',  data: A_DISTS, type: 'line', borderColor: '#00d4ff',
-        backgroundColor: 'transparent', tension: 0.4, yAxisID: 'y2' },
-    ]
-  },
-  options: { ...commonOpts, scales: { ...commonOpts.scales,
-    y:  { ...commonOpts.scales.y, position: 'left',  title: { display: true, text: 'Carga' } },
-    y2: { ...commonOpts.scales.y, position: 'right', title: { display: true, text: 'km' }, grid: { drawOnChartArea: false } }
-  }}
-});
-
-renderMarkdown('ai-today');
+new Chart(document.getElementById('chartLoad'), { type: 'bar', data: { labels: A_DATES, datasets: [
+  { label: 'Carga', data: A_LOADS, backgroundColor: '#f9731688', borderColor: '#f97316', borderWidth: 1, yAxisID: 'y' },
+  { label: 'Dist (km)', data: A_DISTS, type: 'line', borderColor: '#00d4ff', tension: 0.4, yAxisID: 'y2' }
+]}, options: { ...base, scales: { ...base.scales,
+  y:  { ...base.scales.y, position: 'left' },
+  y2: { ...base.scales.y, position: 'right', grid: { drawOnChartArea: false } }
+}}});
 </script>
 
 </body>

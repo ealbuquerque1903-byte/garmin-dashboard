@@ -2,72 +2,70 @@
 {% block title %}{{ activity.name }} — GarminAI{% endblock %}
 
 {% block content %}
-<!-- Header -->
 {% set type = activity.type or '' %}
 {% set icon = '🏃' if 'running' in type else ('🚴' if 'cycling' in type or 'biking' in type else ('🏊' if 'swimming' in type else '🏋️')) %}
 
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
-  <a href="../index.html" style="color:var(--muted);font-size:13px;">← Dashboard</a>
-  <span style="color:var(--border)">|</span>
-  <h1 class="page-title" style="margin:0;">{{ icon }} {{ activity.name }}</h1>
-  <span style="color:var(--muted);font-size:13px;margin-left:4px;">{{ activity.date }}</span>
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+  <a href="../index.html" style="color:var(--muted);font-size:13px;flex-shrink:0;">← Dashboard</a>
+  <h1 class="page-title" style="margin:0;font-size:18px;">{{ icon }} {{ activity.name }}</h1>
+  <span style="color:var(--muted);font-size:12px;">{{ activity.date }}</span>
 </div>
 
-<!-- KPI Cards -->
-<div class="grid grid-6" style="margin-bottom:24px;">
+<!-- KPIs linha 1 -->
+<div class="grid grid-4" style="margin-bottom:12px;">
   <div class="card">
     <div class="card-title">📏 Distância</div>
     <div class="card-value">{{ activity.distance_km or '—' }}<span class="card-unit">km</span></div>
   </div>
   <div class="card">
     <div class="card-title">⏱️ Duração</div>
-    <div class="card-value" style="font-size:20px;">{{ activity.duration or '—' }}</div>
+    <div class="card-value" style="font-size:18px;">{{ activity.duration or '—' }}</div>
   </div>
   <div class="card">
-    <div class="card-title">⚡ Pace Médio</div>
-    <div class="card-value" style="font-size:20px;">{{ activity.pace or '—' }}</div>
-  </div>
-  <div class="card">
-    <div class="card-title">❤️ FC Média</div>
-    <div class="card-value">{{ activity.avg_hr or '—' }}<span class="card-unit">bpm</span></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:2px;">Máx: {{ activity.max_hr or '—' }} bpm</div>
+    <div class="card-title">⚡ Pace</div>
+    <div class="card-value" style="font-size:18px;">{{ activity.pace or '—' }}</div>
   </div>
   <div class="card">
     <div class="card-title">🔥 Calorias</div>
     <div class="card-value">{{ activity.calories or '—' }}<span class="card-unit">kcal</span></div>
   </div>
-  <div class="card">
-    <div class="card-title">📈 Carga</div>
-    <div class="card-value">{{ (activity.training_load | round(0) | int) if activity.training_load else '—' }}</div>
-  </div>
 </div>
 
-<div class="grid grid-6" style="margin-bottom:28px;">
+<!-- KPIs linha 2 -->
+<div class="grid grid-4" style="margin-bottom:12px;">
+  <div class="card">
+    <div class="card-title">❤️ FC Média</div>
+    <div class="card-value">{{ activity.avg_hr or '—' }}<span class="card-unit">bpm</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:3px;">Máx: {{ activity.max_hr or '—' }} bpm</div>
+  </div>
+  <div class="card">
+    <div class="card-title">💪 Potência</div>
+    <div class="card-value">{{ (activity.avg_power | round(0) | int) if activity.avg_power else '—' }}<span class="card-unit">W</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:3px;">NP: {{ (activity.normalized_power | round(0) | int) if activity.normalized_power else '—' }} W</div>
+  </div>
   <div class="card">
     <div class="card-title">🏔️ Elevação</div>
     <div class="card-value">{{ activity.elevation_gain or '—' }}<span class="card-unit">m</span></div>
   </div>
   <div class="card">
     <div class="card-title">🦶 Cadência</div>
-    <div class="card-value" style="font-size:20px;">{{ (activity.cadence | round(0) | int) if activity.cadence else '—' }}<span class="card-unit">ppm</span></div>
+    <div class="card-value">{{ (activity.cadence | round(0) | int) if activity.cadence else '—' }}<span class="card-unit">ppm</span></div>
+  </div>
+</div>
+
+<!-- KPIs linha 3 -->
+<div class="grid grid-4" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-title">📈 Carga</div>
+    <div class="card-value">{{ (activity.training_load | round(0) | int) if activity.training_load else '—' }}</div>
   </div>
   <div class="card">
     <div class="card-title">💨 VO2max</div>
     <div class="card-value">{{ activity.vo2max or '—' }}</div>
   </div>
   <div class="card">
-    <div class="card-title">💪 Potência Méd</div>
-    <div class="card-value">{{ (activity.avg_power | round(0) | int) if activity.avg_power else '—' }}<span class="card-unit">W</span></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:2px;">NP: {{ (activity.normalized_power | round(0) | int) if activity.normalized_power else '—' }} W</div>
-  </div>
-  <!-- Wellness do dia -->
-  <div class="card">
     <div class="card-title">💤 Sono (dia)</div>
     <div class="card-value">{{ wellness.sleep_score or '—' }}<span class="card-unit">/100</span></div>
-  </div>
-  <div class="card">
-    <div class="card-title">💓 HRV (noite ant.)</div>
-    <div class="card-value">{{ wellness.hrv_avg or '—' }}<span class="card-unit">ms</span></div>
   </div>
   <div class="card">
     <div class="card-title">🎯 Prontidão</div>
@@ -75,67 +73,55 @@
   </div>
 </div>
 
-<!-- TIMESERIES CHARTS -->
+<!-- GRÁFICOS -->
 <div class="section-title">Gráficos do Treino</div>
-<div class="grid grid-2" style="margin-bottom:24px;">
-
-  <!-- HR -->
+<div class="grid grid-2" style="margin-bottom:16px;">
   <div class="card">
-    <div class="card-title">❤️ Frequência Cardíaca ao longo do tempo</div>
+    <div class="card-title">❤️ Frequência Cardíaca</div>
     <div class="chart-wrap chart-wrap-tall"><canvas id="chartHR"></canvas></div>
   </div>
-
-  <!-- Pace -->
   <div class="card">
-    <div class="card-title">⚡ Pace ao longo do tempo</div>
+    <div class="card-title">⚡ Pace</div>
     <div class="chart-wrap chart-wrap-tall"><canvas id="chartPace"></canvas></div>
   </div>
-
-  <!-- Power (only if available) -->
   <div class="card" id="powerCard" style="display:none">
-    <div class="card-title">💪 Potência ao longo do tempo</div>
+    <div class="card-title">💪 Potência</div>
     <div class="chart-wrap chart-wrap-tall"><canvas id="chartPower"></canvas></div>
   </div>
-
-  <!-- Cadence -->
   <div class="card">
-    <div class="card-title">🦶 Cadência ao longo do tempo</div>
+    <div class="card-title">🦶 Cadência</div>
     <div class="chart-wrap chart-wrap-tall"><canvas id="chartCadence"></canvas></div>
   </div>
-
-  <!-- Altitude -->
   <div class="card col-span-2">
     <div class="card-title">🏔️ Perfil de Elevação</div>
     <div class="chart-wrap chart-wrap-tall"><canvas id="chartAltitude"></canvas></div>
   </div>
-
 </div>
 
-<!-- HR ZONES -->
+<!-- ZONAS FC -->
 {% if activity.hr_zones %}
 <div class="section-title">Zonas de Frequência Cardíaca</div>
-<div class="card" style="margin-bottom:24px;">
-  {% set zones = activity.hr_zones %}
+<div class="card" style="margin-bottom:16px;">
   {% set zone_colors = ['#3b82f6','#22c55e','#eab308','#f97316','#ef4444'] %}
-  {% set zone_names  = ['Z1 — Recuperação','Z2 — Aeróbico base','Z3 — Aeróbico','Z4 — Limiar','Z5 — VO2max'] %}
+  {% set zone_names  = ['Z1 Recuperação','Z2 Aeróbico','Z3 Tempo','Z4 Limiar','Z5 VO2max'] %}
+  {% set zones = activity.hr_zones %}
   {% set total_secs = namespace(v=0) %}
   {% for z in zones %}{% set total_secs.v = total_secs.v + (z.secsInZone or 0) %}{% endfor %}
 
-  <!-- Bar -->
-  <div class="zone-bar" style="height:16px;border-radius:8px;margin-bottom:16px;">
+  <div class="zone-bar" style="height:14px;margin-bottom:16px;">
     {% for z in zones %}
     {% set pct = ((z.secsInZone or 0) / total_secs.v * 100) if total_secs.v > 0 else 0 %}
     <div style="width:{{ pct }}%;background:{{ zone_colors[loop.index0] }};"></div>
     {% endfor %}
   </div>
 
-  <div class="grid grid-5" style="gap:8px;">
+  <div class="grid grid-4" style="gap:10px;">
   {% for z in zones %}
   {% set pct = ((z.secsInZone or 0) / total_secs.v * 100) if total_secs.v > 0 else 0 %}
   {% set mins = ((z.secsInZone or 0) // 60) %}
-  <div style="border-left:3px solid {{ zone_colors[loop.index0] }};padding-left:12px;">
-    <div style="font-size:11px;color:var(--muted);">{{ zone_names[loop.index0] }}</div>
-    <div style="font-weight:700;font-size:16px;">{{ '%.0f'|format(pct) }}%</div>
+  <div style="border-left:3px solid {{ zone_colors[loop.index0] }};padding-left:10px;">
+    <div style="font-size:10px;color:var(--muted);">{{ zone_names[loop.index0] }}</div>
+    <div style="font-weight:700;font-size:18px;">{{ '%.0f'|format(pct) }}%</div>
     <div style="font-size:11px;color:var(--muted);">{{ mins }} min</div>
   </div>
   {% endfor %}
@@ -143,44 +129,33 @@
 </div>
 {% endif %}
 
-<!-- LAPS -->
+<!-- VOLTAS -->
 {% if activity.laps %}
 <div class="section-title">Análise de Voltas</div>
-<div class="card" style="margin-bottom:24px;">
-  <table>
-    <thead>
+<div class="card" style="margin-bottom:16px;">
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>#</th><th>Dist.</th><th>Tempo</th><th>Pace</th><th>FC Méd</th><th>FC Máx</th><th>Potência</th><th>Elev.</th></tr>
+      </thead>
+      <tbody>
+      {% for lap in activity.laps %}
       <tr>
-        <th>#</th><th>Dist.</th><th>Tempo</th><th>Pace</th>
-        <th>FC Méd</th><th>FC Máx</th><th>Elevação</th><th>Calorias</th>
+        <td style="color:var(--muted)">{{ lap.lap }}</td>
+        <td>{{ lap.distance_km }} km</td>
+        <td>{{ lap.duration }}</td>
+        <td style="font-weight:600;color:var(--accent)">{{ lap.pace }}</td>
+        <td>{{ lap.avg_hr or '—' }} bpm</td>
+        <td>{{ lap.max_hr or '—' }} bpm</td>
+        <td>{{ (lap.avg_power | round(0) | int) if lap.avg_power else '—' }} W</td>
+        <td>{{ lap.elevation_gain or '—' }} m</td>
       </tr>
-    </thead>
-    <tbody>
-    {% for lap in activity.laps %}
-    <tr>
-      <td style="color:var(--muted)">{{ lap.lap }}</td>
-      <td>{{ lap.distance_km }} km</td>
-      <td>{{ lap.duration }}</td>
-      <td style="font-weight:600;color:var(--accent)">{{ lap.pace }}</td>
-      <td>{{ lap.avg_hr or '—' }} bpm</td>
-      <td>{{ lap.max_hr or '—' }} bpm</td>
-      <td>{{ lap.elevation_gain or '—' }} m</td>
-      <td>{{ (lap.calories | round(0) | int) if lap.calories else '—' }} kcal</td>
-    </tr>
-    {% endfor %}
-    </tbody>
-  </table>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
 </div>
 {% endif %}
-
-<!-- AI ANALYSIS -->
-{% if activity.ai_analysis %}
-<div class="section-title">Análise do Treinador IA</div>
-<div class="ai-box" style="margin-bottom:24px;">
-  <div class="ai-header">🤖 Claude — Análise deste Treino</div>
-  <div class="ai-content" id="ai-activity" data-md="{{ activity.ai_analysis | e }}"></div>
-</div>
-{% endif %}
-
 {% endblock %}
 
 {% block scripts %}
@@ -194,14 +169,11 @@ const TS_ALTITUDE = {{ ts_altitude | safe }};
 const TS_DISTANCE = {{ ts_distance | safe }};
 const HAS_POWER   = {{ has_power | safe }};
 
-// Thin out timeseries for performance (max 500 points)
-function thin(arr, max=500) {
+function thin(arr, max=400) {
   if (!arr || arr.length <= max) return arr;
   const step = Math.ceil(arr.length / max);
   return arr.filter((_, i) => i % step === 0);
 }
-
-// Build x-axis labels from elapsed seconds or distance
 function makeLabels() {
   const d = thin(TS_DISTANCE);
   if (d && d.some(v => v)) return d.map(v => v ? (v/1000).toFixed(2)+'km' : '');
@@ -212,88 +184,39 @@ function makeLabels() {
   });
   return [];
 }
-
 const LABELS = makeLabels();
-
-const baseOpts = {
-  responsive: true, maintainAspectRatio: false,
-  animation: false,
+const base = {
+  responsive: true, maintainAspectRatio: false, animation: false,
   plugins: { legend: { display: false } },
-  scales: {
-    x: { grid: { color: '#1e293b' }, ticks: { maxTicksLimit: 10, color: '#64748b' } },
-    y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } }
-  },
+  scales: { x: { grid: { color: '#1e293b' }, ticks: { maxTicksLimit: 8, color: '#64748b' } },
+             y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } } },
   elements: { point: { radius: 0 }, line: { borderWidth: 2 } }
 };
 
-// HR chart
-new Chart(document.getElementById('chartHR'), {
-  type: 'line',
-  data: { labels: LABELS, datasets: [{
-    data: thin(TS_HR), borderColor: '#ef4444', backgroundColor: '#ef444422',
-    fill: true, tension: 0.2
-  }]},
-  options: { ...baseOpts, scales: { ...baseOpts.scales,
-    y: { ...baseOpts.scales.y, title: { display: true, text: 'bpm', color: '#64748b' } }
-  }}
-});
+new Chart(document.getElementById('chartHR'), { type: 'line', data: { labels: LABELS, datasets: [{
+  data: thin(TS_HR), borderColor: '#ef4444', backgroundColor: '#ef444422', fill: true, tension: 0.2
+}]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'bpm', color: '#64748b' } } } }});
 
-// Pace chart (filter outliers > 15 min/km)
 const cleanPace = thin(TS_PACE).map(v => (v && v < 900) ? parseFloat((v/60).toFixed(2)) : null);
-new Chart(document.getElementById('chartPace'), {
-  type: 'line',
-  data: { labels: LABELS, datasets: [{
-    data: cleanPace, borderColor: '#00d4ff', backgroundColor: '#00d4ff22',
-    fill: true, tension: 0.2, spanGaps: true
-  }]},
-  options: { ...baseOpts, scales: { ...baseOpts.scales,
-    y: { ...baseOpts.scales.y,
-      reverse: true,
-      title: { display: true, text: 'min/km', color: '#64748b' },
-      ticks: { color: '#64748b', callback: v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}` }
-    }
-  }}
-});
+new Chart(document.getElementById('chartPace'), { type: 'line', data: { labels: LABELS, datasets: [{
+  data: cleanPace, borderColor: '#00d4ff', backgroundColor: '#00d4ff22', fill: true, tension: 0.2, spanGaps: true
+}]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, reverse: true,
+  ticks: { color: '#64748b', callback: v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}` }
+}}}});
 
-// Power chart
 if (HAS_POWER) {
   document.getElementById('powerCard').style.display = '';
-  new Chart(document.getElementById('chartPower'), {
-    type: 'line',
-    data: { labels: LABELS, datasets: [{
-      data: thin(TS_POWER), borderColor: '#f97316', backgroundColor: '#f9731622',
-      fill: true, tension: 0.2
-    }]},
-    options: { ...baseOpts, scales: { ...baseOpts.scales,
-      y: { ...baseOpts.scales.y, title: { display: true, text: 'Watts', color: '#64748b' } }
-    }}
-  });
+  new Chart(document.getElementById('chartPower'), { type: 'line', data: { labels: LABELS, datasets: [{
+    data: thin(TS_POWER), borderColor: '#f97316', backgroundColor: '#f9731622', fill: true, tension: 0.2
+  }]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'Watts', color: '#64748b' } } } }});
 }
 
-// Cadence
-new Chart(document.getElementById('chartCadence'), {
-  type: 'line',
-  data: { labels: LABELS, datasets: [{
-    data: thin(TS_CADENCE), borderColor: '#7c3aed', backgroundColor: '#7c3aed22',
-    fill: true, tension: 0.2, spanGaps: true
-  }]},
-  options: { ...baseOpts, scales: { ...baseOpts.scales,
-    y: { ...baseOpts.scales.y, title: { display: true, text: 'ppm', color: '#64748b' } }
-  }}
-});
+new Chart(document.getElementById('chartCadence'), { type: 'line', data: { labels: LABELS, datasets: [{
+  data: thin(TS_CADENCE), borderColor: '#7c3aed', backgroundColor: '#7c3aed22', fill: true, tension: 0.2, spanGaps: true
+}]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'ppm', color: '#64748b' } } } }});
 
-// Altitude
-new Chart(document.getElementById('chartAltitude'), {
-  type: 'line',
-  data: { labels: LABELS, datasets: [{
-    data: thin(TS_ALTITUDE), borderColor: '#22c55e', backgroundColor: '#22c55e22',
-    fill: true, tension: 0.3, spanGaps: true
-  }]},
-  options: { ...baseOpts, scales: { ...baseOpts.scales,
-    y: { ...baseOpts.scales.y, title: { display: true, text: 'metros', color: '#64748b' } }
-  }}
-});
-
-renderMarkdown('ai-activity');
+new Chart(document.getElementById('chartAltitude'), { type: 'line', data: { labels: LABELS, datasets: [{
+  data: thin(TS_ALTITUDE), borderColor: '#22c55e', backgroundColor: '#22c55e22', fill: true, tension: 0.3, spanGaps: true
+}]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'metros', color: '#64748b' } } } }});
 </script>
 {% endblock %}

@@ -2,38 +2,36 @@
 {% block title %}Bem-estar {{ day }} — GarminAI{% endblock %}
 
 {% block content %}
-<div style="display:flex;align-items:center;gap:12px;margin-bottom:24px;">
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
   <a href="../index.html" style="color:var(--muted);font-size:13px;">← Dashboard</a>
-  <span style="color:var(--border)">|</span>
-  <h1 class="page-title" style="margin:0;">💤 Bem-estar — {{ day }}</h1>
+  <h1 class="page-title" style="margin:0;font-size:18px;">💤 Bem-estar — {{ day }}</h1>
 </div>
 
-<!-- KPIs -->
-<div class="grid grid-4" style="margin-bottom:24px;">
+<div class="grid grid-4" style="margin-bottom:12px;">
   <div class="card">
-    <div class="card-title">💤 Pontuação do Sono</div>
+    <div class="card-title">💤 Sono</div>
     <div class="card-value">{{ wellness.sleep_score or '—' }}<span class="card-unit">/100</span></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:4px;">{{ wellness.sleep_duration or '—' }}</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">{{ wellness.sleep_duration or '—' }}</div>
   </div>
   <div class="card">
-    <div class="card-title">💓 HRV Noturna</div>
+    <div class="card-title">💓 HRV</div>
     <div class="card-value">{{ wellness.hrv_avg or '—' }}<span class="card-unit">ms</span></div>
-    <div style="margin-top:6px;">
+    <div style="margin-top:4px;">
       {% set s = wellness.hrv_status or '' %}
       {% if s == 'BALANCED' %}<span class="badge badge-green">Equilibrado</span>
-      {% elif s == 'UNBALANCED' %}<span class="badge badge-red">Desequilibrado</span>
+      {% elif s == 'UNBALANCED' %}<span class="badge badge-red">Desequil.</span>
       {% elif s == 'LOW' %}<span class="badge badge-yellow">Baixo</span>
       {% else %}<span class="badge badge-blue">{{ s or '—' }}</span>{% endif %}
     </div>
   </div>
   <div class="card">
-    <div class="card-title">❤️ FC em Repouso</div>
+    <div class="card-title">❤️ FC Repouso</div>
     <div class="card-value">{{ wellness.rhr or '—' }}<span class="card-unit">bpm</span></div>
   </div>
   <div class="card">
     <div class="card-title">🎯 Prontidão</div>
     <div class="card-value">{{ wellness.training_readiness_score or '—' }}<span class="card-unit">/100</span></div>
-    <div style="margin-top:6px;">
+    <div style="margin-top:4px;">
       {% set lvl = wellness.training_readiness_level or '' %}
       {% if lvl == 'HIGH' %}<span class="badge badge-green">Alta</span>
       {% elif lvl == 'MODERATE' %}<span class="badge badge-yellow">Moderada</span>
@@ -43,84 +41,52 @@
   </div>
 </div>
 
-<div class="grid grid-4" style="margin-bottom:28px;">
+<div class="grid grid-4" style="margin-bottom:20px;">
   <div class="card">
     <div class="card-title">🌙 Deep Sleep</div>
-    <div class="card-value" style="font-size:20px;">{{ wellness.deep_sleep or '—' }}</div>
+    <div class="card-value" style="font-size:18px;">{{ wellness.deep_sleep or '—' }}</div>
   </div>
   <div class="card">
     <div class="card-title">🌀 REM Sleep</div>
-    <div class="card-value" style="font-size:20px;">{{ wellness.rem_sleep or '—' }}</div>
+    <div class="card-value" style="font-size:18px;">{{ wellness.rem_sleep or '—' }}</div>
   </div>
   <div class="card">
     <div class="card-title">⚡ Body Battery</div>
     <div class="card-value">{{ wellness.body_battery_charged or '—' }}<span class="card-unit">%</span></div>
-    <div style="color:var(--muted);font-size:12px;margin-top:4px;">Drenado: {{ wellness.body_battery_drained or '—' }}%</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:3px;">Drenado: {{ wellness.body_battery_drained or '—' }}%</div>
   </div>
   <div class="card">
-    <div class="card-title">😤 Estresse Médio</div>
+    <div class="card-title">😤 Estresse</div>
     <div class="card-value">{{ wellness.stress_avg or '—' }}<span class="card-unit">/100</span></div>
   </div>
 </div>
 
-<!-- Sleep quality visual -->
 {% if wellness.sleep_score %}
 <div class="section-title">Qualidade do Sono</div>
-<div class="card" style="margin-bottom:24px;">
-  <div style="display:flex;gap:32px;align-items:center;">
-    <!-- Score ring -->
-    <div style="text-align:center;min-width:120px;">
-      <svg width="120" height="120" viewBox="0 0 120 120">
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+    <div style="text-align:center;min-width:100px;">
+      <svg width="100" height="100" viewBox="0 0 120 120">
         <circle cx="60" cy="60" r="50" fill="none" stroke="#1e293b" stroke-width="12"/>
         <circle cx="60" cy="60" r="50" fill="none"
           stroke="{% if wellness.sleep_score >= 80 %}#22c55e{% elif wellness.sleep_score >= 60 %}#eab308{% else %}#ef4444{% endif %}"
           stroke-width="12"
           stroke-dasharray="{{ (wellness.sleep_score / 100 * 314) | round(1) }} 314"
-          stroke-dashoffset="78.5"
-          stroke-linecap="round"/>
-        <text x="60" y="65" text-anchor="middle" font-size="28" font-weight="700"
+          stroke-dashoffset="78.5" stroke-linecap="round"/>
+        <text x="60" y="68" text-anchor="middle" font-size="30" font-weight="700"
           fill="{% if wellness.sleep_score >= 80 %}#22c55e{% elif wellness.sleep_score >= 60 %}#eab308{% else %}#ef4444{% endif %}">
           {{ wellness.sleep_score }}
         </text>
       </svg>
-      <div style="font-size:12px;color:var(--muted);">pontuação</div>
+      <div style="font-size:11px;color:var(--muted);">pontuação</div>
     </div>
-    <!-- Breakdown -->
-    <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-      <div>
-        <div style="font-size:12px;color:var(--muted)">Duração total</div>
-        <div style="font-weight:600">{{ wellness.sleep_duration or '—' }}</div>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted)">Deep Sleep</div>
-        <div style="font-weight:600;color:#7c3aed">{{ wellness.deep_sleep or '—' }}</div>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted)">REM Sleep</div>
-        <div style="font-weight:600;color:#00d4ff">{{ wellness.rem_sleep or '—' }}</div>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted)">Passos no dia</div>
-        <div style="font-weight:600">{{ '{:,}'.format(wellness.steps) if wellness.steps else '—' }}</div>
-      </div>
+    <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:200px;">
+      <div><div style="font-size:11px;color:var(--muted)">Total</div><div style="font-weight:600">{{ wellness.sleep_duration or '—' }}</div></div>
+      <div><div style="font-size:11px;color:var(--muted)">Deep</div><div style="font-weight:600;color:#7c3aed">{{ wellness.deep_sleep or '—' }}</div></div>
+      <div><div style="font-size:11px;color:var(--muted)">REM</div><div style="font-weight:600;color:#00d4ff">{{ wellness.rem_sleep or '—' }}</div></div>
+      <div><div style="font-size:11px;color:var(--muted)">Passos</div><div style="font-weight:600">{{ '{:,}'.format(wellness.steps).replace(',','.') if wellness.steps else '—' }}</div></div>
     </div>
   </div>
 </div>
 {% endif %}
-
-<!-- AI Analysis -->
-{% if wellness.ai_analysis %}
-<div class="section-title">Análise de Recuperação</div>
-<div class="ai-box" style="margin-bottom:24px;">
-  <div class="ai-header">🤖 Claude — Análise de Recuperação</div>
-  <div class="ai-content" id="ai-wellness" data-md="{{ wellness.ai_analysis | e }}"></div>
-</div>
-{% endif %}
-
-{% endblock %}
-
-{% block scripts %}
-<script>
-renderMarkdown('ai-wellness');
-</script>
 {% endblock %}
