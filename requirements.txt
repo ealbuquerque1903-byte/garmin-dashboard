@@ -1,0 +1,6 @@
+garminconnect
+fastapi
+uvicorn
+jinja2
+anthropic
+python-multipart

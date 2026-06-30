@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{% block title %}Garmin Dashboard{% endblock %}</title>
+  <script src="{{ static_prefix }}/chart.min.js"></script>
+  <script src="{{ static_prefix }}/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --card: #1a1d27;
+      --card2: #22263a;
+      --accent: #00d4ff;
+      --accent2: #7c3aed;
+      --green: #22c55e;
+      --yellow: #eab308;
+      --red: #ef4444;
+      --orange: #f97316;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --border: #2d3748;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* Nav */
+    nav {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .nav-brand {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: -0.5px;
+    }
+    .nav-brand span { color: var(--text); }
+    nav a { color: var(--muted); font-size: 13px; }
+    nav a:hover { color: var(--text); text-decoration: none; }
+
+    /* Layout */
+    .container { max-width: 1280px; margin: 0 auto; padding: 24px; }
+    .page-title { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 12px;
+    }
+
+    /* Cards */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .card-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+    .card-value {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .card-unit { font-size: 14px; color: var(--muted); margin-left: 4px; }
+
+    /* Grid */
+    .grid { display: grid; gap: 16px; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-6 { grid-template-columns: repeat(6, 1fr); }
+    .col-span-2 { grid-column: span 2; }
+    .col-span-3 { grid-column: span 3; }
+
+    /* Status badge */
+    .badge {
+      display: inline-block;
+      padding: 2px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .badge-green  { background: #14532d; color: var(--green); }
+    .badge-yellow { background: #713f12; color: var(--yellow); }
+    .badge-red    { background: #7f1d1d; color: var(--red); }
+    .badge-blue   { background: #1e3a5f; color: var(--accent); }
+    .badge-purple { background: #3b0764; color: #c084fc; }
+
+    /* Activity list */
+    .activity-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .activity-row:last-child { border-bottom: none; }
+    .activity-icon {
+      width: 40px; height: 40px;
+      border-radius: 10px;
+      background: var(--card2);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .activity-name { font-weight: 600; font-size: 14px; }
+    .activity-meta { color: var(--muted); font-size: 12px; margin-top: 2px; }
+    .activity-stats {
+      margin-left: auto;
+      display: flex;
+      gap: 24px;
+      text-align: right;
+    }
+    .stat-label { font-size: 11px; color: var(--muted); }
+    .stat-value { font-size: 14px; font-weight: 600; }
+
+    /* Chart container */
+    .chart-wrap {
+      position: relative;
+      height: 220px;
+    }
+    .chart-wrap-tall { height: 280px; }
+
+    /* AI analysis */
+    .ai-box {
+      background: linear-gradient(135deg, #1a1d27 0%, #1e1b3a 100%);
+      border: 1px solid #3b0764;
+      border-radius: 12px;
+      padding: 20px;
+    }
+    .ai-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 16px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #c084fc;
+    }
+    .ai-content h2 { font-size: 14px; margin: 16px 0 6px; color: var(--accent); }
+    .ai-content h3 { font-size: 13px; margin: 12px 0 4px; color: var(--text); }
+    .ai-content p  { color: var(--muted); font-size: 13px; line-height: 1.7; margin-bottom: 8px; }
+    .ai-content ul { color: var(--muted); font-size: 13px; padding-left: 20px; margin-bottom: 8px; }
+    .ai-content li { margin-bottom: 4px; }
+    .ai-content strong { color: var(--text); }
+
+    /* Lap table */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--card2); }
+
+    /* HR zone bar */
+    .zone-bar { display: flex; height: 8px; border-radius: 4px; overflow: hidden; margin: 8px 0; }
+
+    /* Print */
+    @media print {
+      nav, .no-print { display: none !important; }
+      body { background: white; color: #111; font-size: 12px; }
+      .card { border: 1px solid #ddd; break-inside: avoid; }
+      .ai-box { border: 1px solid #c084fc; background: #faf5ff; }
+      .ai-content p, .ai-content li { color: #333; }
+      .ai-content h2 { color: #7c3aed; }
+      .page-title { color: #111; }
+      .card-value { color: #111; }
+      .activity-name { color: #111; }
+      canvas { max-width: 100%; }
+    }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+<nav>
+  <div class="nav-brand">⌚ Garmin<span>AI</span></div>
+  <a href="{{ index_href | default('index.html') }}">Dashboard</a>
+  <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+    <button onclick="window.print()" class="no-print"
+      style="background:var(--card2);border:1px solid var(--border);color:var(--text);
+             padding:6px 14px;border-radius:8px;cursor:pointer;font-size:12px;">
+      🖨️ Exportar PDF
+    </button>
+  </div>
+</nav>
+<div class="container">
+{% block content %}{% endblock %}
+</div>
+<script>
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#2d3748';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+Chart.defaults.font.size = 11;
+
+function renderMarkdown(id) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = marked.parse(el.dataset.md || '');
+}
+</script>
+{% block scripts %}{% endblock %}
+</body>
+</html>

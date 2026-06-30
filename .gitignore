@@ -1,0 +1,11 @@
+# Credenciais — NUNCA versionar
+.garmin_tokens/
+.env
+*.token
+sync.log
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+.DS_Store
