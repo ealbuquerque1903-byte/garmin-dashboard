@@ -87,6 +87,9 @@ def build_index(jenv, history):
 def build_activities(jenv, history):
     acts_dir = DIST / "activity"
     acts_dir.mkdir()
+    devices_list    = history.get("devices", [])
+    devices_map     = {d["id"]: d for d in devices_list}
+    hr_zone_limits  = history.get("hr_zone_limits", {})
     for act_id, activity in history.get("activities", {}).items():
         act_date = activity.get("date", "")
         wellness = history.get("wellness", {}).get(act_date, {})
@@ -107,6 +110,8 @@ def build_activities(jenv, history):
             ts_gct           = clean_ts(ts.get("gct")),
             ts_vo            = clean_ts(ts.get("vo")),
             has_power        = json.dumps(any(v for v in (ts.get("power") or []) if v)),
+            devices_map      = devices_map,
+            hr_zone_limits   = hr_zone_limits,
             static_prefix    = "../static",
             index_href       = "../index.html",
         )

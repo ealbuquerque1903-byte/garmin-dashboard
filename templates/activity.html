@@ -195,6 +195,24 @@
 </div>
 {% endif %}
 
+<!-- FONTE DOS DADOS -->
+{% if devices_map %}
+<div class="section-title">Fonte dos Dados</div>
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:flex;flex-wrap:wrap;gap:12px;">
+  {% for dev_id, dev in devices_map.items() %}
+  <div style="display:flex;align-items:center;gap:10px;padding:8px 14px;border:1px solid var(--border);border-radius:8px;{% if dev_id == activity.device_id %}border-color:var(--accent);{% endif %}">
+    <span style="font-size:20px;">{% if 'hrm' in dev.name|lower or 'hr' in dev.name|lower %}💓{% elif 'forerunner' in dev.name|lower or 'fenix' in dev.name|lower or 'garmin' in dev.name|lower %}⌚{% else %}📡{% endif %}</span>
+    <div>
+      <div style="font-weight:600;font-size:13px;">{{ dev.name }}</div>
+      <div style="font-size:11px;color:var(--muted);">Firmware {{ dev.firmware }}{% if dev_id == activity.device_id %} · <span style="color:var(--accent)">dispositivo principal</span>{% endif %}</div>
+    </div>
+  </div>
+  {% endfor %}
+  </div>
+</div>
+{% endif %}
+
 <!-- GRÁFICOS -->
 <div class="section-title">Gráficos do Treino</div>
 <div class="grid grid-2" style="margin-bottom:16px;">
@@ -205,10 +223,6 @@
   <div class="card">
     <div class="card-title">⚡ Pace</div>
     <div class="chart-wrap chart-wrap-tall"><canvas id="chartPace"></canvas></div>
-  </div>
-  <div class="card" id="powerCard" style="display:none">
-    <div class="card-title">💪 Potência</div>
-    <div class="chart-wrap chart-wrap-tall"><canvas id="chartPower"></canvas></div>
   </div>
   <div class="card">
     <div class="card-title">🦶 Cadência</div>
@@ -256,8 +270,13 @@
   {% set pct = (t or 0) / total.v * 100 %}
   {% set mins = ((t or 0) // 60) | int %}
   {% set secs = ((t or 0) % 60) | int %}
+  {% set zlimits = hr_zone_limits.zones if hr_zone_limits and hr_zone_limits.zones else [] %}
   <div style="border-left:3px solid {{ zone_colors[loop.index0] }};padding-left:10px;">
     <div style="font-size:10px;color:var(--muted);">{{ zone_names[loop.index0] }}</div>
+    {% if zlimits and loop.index0 < zlimits|length %}
+    {% set zl = zlimits[loop.index0] %}
+    <div style="font-size:10px;color:{{ zone_colors[loop.index0] }};font-weight:600;">{{ zl.floor or '?' }}–{{ zl.ceil or '?' }} bpm</div>
+    {% endif %}
     <div style="font-weight:700;font-size:20px;">{{ '%.0f'|format(pct) }}%</div>
     <div style="font-size:13px;font-weight:600;color:var(--text);">{{ mins }}:{{ '%02d'|format(secs) }} min</div>
   </div>
@@ -284,8 +303,13 @@
   {% set pct = (z.secsInZone or 0) / total_secs.v * 100 %}
   {% set mins = ((z.secsInZone or 0) // 60) | int %}
   {% set secs = ((z.secsInZone or 0) % 60) | int %}
+  {% set zlimits = hr_zone_limits.zones if hr_zone_limits and hr_zone_limits.zones else [] %}
   <div style="border-left:3px solid {{ zone_colors[loop.index0] }};padding-left:10px;">
     <div style="font-size:10px;color:var(--muted);">{{ zone_names[loop.index0] }}</div>
+    {% if zlimits and loop.index0 < zlimits|length %}
+    {% set zl = zlimits[loop.index0] %}
+    <div style="font-size:10px;color:{{ zone_colors[loop.index0] }};font-weight:600;">{{ zl.floor or '?' }}–{{ zl.ceil or '?' }} bpm</div>
+    {% endif %}
     <div style="font-weight:700;font-size:20px;">{{ '%.0f'|format(pct) }}%</div>
     <div style="font-size:13px;font-weight:600;color:var(--text);">{{ mins }}:{{ '%02d'|format(secs) }} min</div>
   </div>
@@ -298,39 +322,49 @@
 <!-- SPLITS POR KM -->
 {% if activity.laps %}
 <div class="section-title">Splits por km</div>
-<div class="card" style="margin-bottom:16px;">
+<div class="card splits-card" style="margin-bottom:16px;">
   <div class="table-wrap">
-    <table>
+    <table class="splits-table">
       <thead>
         <tr>
           <th>#</th><th>Dist.</th><th>Tempo</th><th>Pace</th>
-          <th>FC Méd</th><th>FC Máx</th><th>Potência</th>
-          <th>Cadência</th><th>Elev.↑</th><th>Passada</th><th>GCT</th><th>Oscil.</th><th>V.Ratio</th><th>Temp.</th>
+          <th>FC M</th><th>FC X</th><th>Pot.</th>
+          <th>Cad.</th><th>Elev↑</th><th>Pass.</th><th>GCT</th><th>Oscil.</th><th>V.R.</th><th>Temp.</th>
         </tr>
       </thead>
       <tbody>
       {% for lap in activity.laps %}
       <tr>
         <td style="color:var(--muted)">{{ lap.lap }}</td>
-        <td>{{ lap.distance_km }} km</td>
+        <td>{{ lap.distance_km }}</td>
         <td>{{ lap.duration }}</td>
         <td style="font-weight:600;color:var(--accent)">{{ lap.pace }}</td>
         <td>{{ lap.avg_hr or '—' }}</td>
         <td>{{ lap.max_hr or '—' }}</td>
-        <td>{{ (lap.avg_power | round(0) | int) if lap.avg_power else '—' }} W</td>
+        <td>{{ (lap.avg_power | round(0) | int) if lap.avg_power else '—' }}</td>
         <td>{{ (lap.avg_cadence | round(0) | int) if lap.avg_cadence else '—' }}</td>
-        <td>{{ lap.elevation_gain or '—' }} m</td>
-        <td>{{ (lap.stride_length | round(0) | int) if lap.stride_length else '—' }} cm</td>
-        <td>{{ (lap.gct | round(0) | int) if lap.gct else '—' }} ms</td>
-        <td>{{ '%.1f'|format(lap.vertical_osc) if lap.vertical_osc else '—' }} cm</td>
-        <td>{{ '%.1f'|format(lap.vertical_ratio) if lap.vertical_ratio else '—' }}%</td>
-        <td>{{ lap.avg_temp or '—' }}°C</td>
+        <td>{{ lap.elevation_gain or '—' }}</td>
+        <td>{{ (lap.stride_length | round(0) | int) if lap.stride_length else '—' }}</td>
+        <td>{{ (lap.gct | round(0) | int) if lap.gct else '—' }}</td>
+        <td>{{ '%.1f'|format(lap.vertical_osc) if lap.vertical_osc else '—' }}</td>
+        <td>{{ '%.1f'|format(lap.vertical_ratio) if lap.vertical_ratio else '—' }}</td>
+        <td>{{ lap.avg_temp or '—' }}</td>
       </tr>
       {% endfor %}
       </tbody>
     </table>
   </div>
 </div>
+<style>
+.splits-table { font-size: 11px; }
+.splits-table th, .splits-table td { padding: 4px 6px; white-space: nowrap; }
+@media print {
+  @page { size: landscape; margin: 10mm; }
+  .splits-card { page-break-inside: avoid; }
+  .splits-table { font-size: 9px; }
+  .splits-table th, .splits-table td { padding: 3px 4px; }
+}
+</style>
 {% endif %}
 {% endblock %}
 
@@ -387,13 +421,6 @@ new Chart(document.getElementById('chartPace'), { type: 'line', data: { labels: 
 }]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, reverse: true,
   ticks: { color: '#64748b', callback: v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}` }
 }}}});
-
-if (HAS_POWER) {
-  document.getElementById('powerCard').style.display = '';
-  new Chart(document.getElementById('chartPower'), { type: 'line', data: { labels: LABELS, datasets: [{
-    data: thin(TS_POWER), borderColor: '#f97316', backgroundColor: '#f9731622', fill: true, tension: 0.2
-  }]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'W', color: '#64748b' } } } }});
-}
 
 new Chart(document.getElementById('chartCadence'), { type: 'line', data: { labels: LABELS, datasets: [{
   data: thin(TS_CADENCE), borderColor: '#7c3aed', backgroundColor: '#7c3aed22', fill: true, tension: 0.2, spanGaps: true

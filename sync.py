@@ -28,6 +28,46 @@ DB_FILE    = Path(__file__).parent / "garmin" / "history.json"
 
 # ── client ──────────────────────────────────────────────────────────────────
 
+def fetch_devices(client) -> list:
+    try:
+        devs = client.get_devices()
+        result = []
+        for d in (devs or []):
+            result.append({
+                "id":       str(d.get("deviceId", "")),
+                "name":     d.get("productDisplayName") or d.get("deviceTypeSimpleName", ""),
+                "firmware": d.get("currentFirmwareVersion", ""),
+                "primary":  d.get("primaryActivityTrackerIndicator", False),
+            })
+        return result
+    except Exception as e:
+        print(f"  Aviso dispositivos: {e}")
+        return []
+
+def fetch_hr_zone_limits(client) -> dict:
+    try:
+        zones = client.connectapi('/biometric-service/heartRateZones')
+        running = next((z for z in zones if z.get("sport") == "RUNNING"), None)
+        default = next((z for z in zones if z.get("sport") == "DEFAULT"), None)
+        z = running or default or {}
+        f1, f2, f3, f4, f5, mx = (
+            z.get("zone1Floor"), z.get("zone2Floor"), z.get("zone3Floor"),
+            z.get("zone4Floor"), z.get("zone5Floor"), z.get("maxHeartRateUsed"),
+        )
+        return {
+            "max_hr": mx,
+            "zones": [
+                {"floor": f1, "ceil": (f2 - 1) if f2 else None},
+                {"floor": f2, "ceil": (f3 - 1) if f3 else None},
+                {"floor": f3, "ceil": (f4 - 1) if f4 else None},
+                {"floor": f4, "ceil": (f5 - 1) if f5 else None},
+                {"floor": f5, "ceil": mx},
+            ]
+        }
+    except Exception as e:
+        print(f"  Aviso zonas FC: {e}")
+        return {}
+
 def load_client():
     from garminconnect import Garmin
     token_path = Path(TOKEN_DIR)
@@ -197,7 +237,7 @@ def fetch_activity(client, act: dict) -> dict:
     act_date = (act.get("startTimeLocal") or "")[:10]
     print(f"    → timeseries, splits, weather...")
 
-    details = {}; lap_dtos = []; hr_zones = {}; weather = {}; summary_dto = {}
+    details = {}; lap_dtos = []; hr_zones = {}; weather = {}; summary_dto = {}; device_id = ""
     try:    details  = client.get_activity_details(act_id, maxchart=2000)
     except Exception as e: print(f"      detalhe: {e}")
     try:
@@ -211,6 +251,8 @@ def fetch_activity(client, act: dict) -> dict:
     try:
         act_full = client.connectapi(f"/activity-service/activity/{act_id}")
         summary_dto = act_full.get("summaryDTO") or {}
+        metadata_dto = act_full.get("metadataDTO") or {}
+        device_id = str((metadata_dto.get("deviceMetaDataDTO") or {}).get("deviceId", ""))
     except Exception: pass
 
     timeseries = extract_timeseries(details)
@@ -330,6 +372,8 @@ def fetch_activity(client, act: dict) -> dict:
         "weather_desc":     (weather.get("weatherTypeDTO") or {}).get("desc"),
         "min_temp_c":       act.get("minTemperature"),
         "max_temp_c":       act.get("maxTemperature"),
+        # Dispositivo
+        "device_id":        device_id,
         # Zonas FC (tempo em segundos)
         "hr_zone_times":    hr_zone_times,
         "hr_zones":         hr_zones,
@@ -357,6 +401,10 @@ def sync(days: int = 30):
     GARMIN_DIR.mkdir(exist_ok=True)
     history = load_history()
     today   = date.today()
+
+    print("Dispositivos e zonas FC...")
+    history["devices"]        = fetch_devices(client)
+    history["hr_zone_limits"] = fetch_hr_zone_limits(client)
 
     print(f"Bem-estar ({days} dias)...")
     for i in range(days):
