@@ -197,7 +197,7 @@ def fetch_activity(client, act: dict) -> dict:
     act_date = (act.get("startTimeLocal") or "")[:10]
     print(f"    → timeseries, splits, weather...")
 
-    details = {}; lap_dtos = []; hr_zones = {}; weather = {}
+    details = {}; lap_dtos = []; hr_zones = {}; weather = {}; summary_dto = {}
     try:    details  = client.get_activity_details(act_id, maxchart=2000)
     except Exception as e: print(f"      detalhe: {e}")
     try:
@@ -208,17 +208,41 @@ def fetch_activity(client, act: dict) -> dict:
     except Exception: pass
     try:    weather  = client.get_activity_weather(act_id) or {}
     except Exception: pass
+    try:
+        act_full = client.connectapi(f"/activity-service/activity/{act_id}")
+        summary_dto = act_full.get("summaryDTO") or {}
+    except Exception: pass
 
     timeseries = extract_timeseries(details)
     laps       = extract_laps(lap_dtos)
     dist_m     = act.get("distance")
     speed      = act.get("averageSpeed")
 
-    # Stamina: pega do timeseries
-    stam_vals = [v for v in timeseries.get("stamina", []) if v is not None]
-    stamina_start = stam_vals[0]  if stam_vals else None
-    stamina_end   = stam_vals[-1] if stam_vals else None
-    stamina_min   = min(stam_vals) if stam_vals else None
+    # Stamina do summaryDTO (mais confiável que timeseries)
+    stamina_start = summary_dto.get("beginPotentialStamina") or summary_dto.get("beginAvailableStamina")
+    stamina_end   = summary_dto.get("endPotentialStamina")   or summary_dto.get("endAvailableStamina")
+    stamina_min   = summary_dto.get("minAvailableStamina")
+
+    # Autoavaliação: feel 0-100 → converte para 1-10, RPE 0-100 → 1-10
+    feel_raw = summary_dto.get("directWorkoutFeel")
+    rpe_raw  = summary_dto.get("directWorkoutRpe")
+
+    def rpe_label(v):
+        if v is None: return None
+        if v <= 20:  return "Muito fácil"
+        if v <= 35:  return "Fácil"
+        if v <= 50:  return "Moderado"
+        if v <= 65:  return "Difícil"
+        if v <= 80:  return "Muito difícil"
+        return "Máximo"
+
+    def feel_label(v):
+        if v is None: return None
+        if v >= 80:  return "Ótimo 😄"
+        if v >= 60:  return "Bom 🙂"
+        if v >= 40:  return "Ok 😐"
+        if v >= 20:  return "Ruim 😕"
+        return "Péssimo 😣"
 
     # Temperatura em Fahrenheit → Celsius
     def f_to_c(f):
@@ -282,6 +306,15 @@ def fetch_activity(client, act: dict) -> dict:
         "stamina_start":    stamina_start,
         "stamina_end":      stamina_end,
         "stamina_min":      stamina_min,
+        # Autoavaliação
+        "feel":             feel_raw,
+        "feel_label":       feel_label(feel_raw),
+        "rpe":              rpe_raw,
+        "rpe_label":        rpe_label(rpe_raw),
+        "recovery_hr":      summary_dto.get("recoveryHeartRate"),
+        # Impacto
+        "impact_load":      summary_dto.get("impactLoad"),
+        "body_battery_drain": summary_dto.get("differenceBodyBattery"),
         # Dinâmica de corrida
         "avg_gct":          act.get("avgGroundContactTime"),
         "avg_vertical_osc": act.get("avgVerticalOscillation"),

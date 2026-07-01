@@ -103,6 +103,31 @@
         </div>
       </div>
     </div>
+    {% if activity.feel or activity.rpe %}
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;display:flex;gap:12px;">
+      {% if activity.feel is not none %}
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted)">Como se sentiu</div>
+        <div style="font-size:16px;font-weight:700;margin-top:4px;">{{ activity.feel_label or '—' }}</div>
+        <div style="font-size:11px;color:var(--muted)">{{ activity.feel }}/100</div>
+      </div>
+      {% endif %}
+      {% if activity.rpe is not none %}
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted)">Esforço percebido</div>
+        <div style="font-size:16px;font-weight:700;margin-top:4px;">{{ activity.rpe_label or '—' }}</div>
+        <div style="font-size:11px;color:var(--muted)">{{ activity.rpe }}/100</div>
+      </div>
+      {% endif %}
+      {% if activity.recovery_hr %}
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted)">FC recuperação</div>
+        <div style="font-size:22px;font-weight:700;margin-top:4px;color:var(--green)">{{ activity.recovery_hr }}</div>
+        <div style="font-size:11px;color:var(--muted)">bpm (1 min)</div>
+      </div>
+      {% endif %}
+    </div>
+    {% endif %}
   </div>
 
   <div class="card">
