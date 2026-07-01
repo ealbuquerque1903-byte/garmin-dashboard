@@ -93,18 +93,22 @@ def build_activities(jenv, history):
         ts = activity.get("timeseries", {})
         tmpl = jenv.get_template("activity.html")
         html = tmpl.render(
-            activity      = activity,
-            wellness      = wellness,
-            ts_time       = clean_ts(ts.get("time")),
-            ts_hr         = clean_ts(ts.get("hr")),
-            ts_pace       = clean_ts(ts.get("pace")),
-            ts_power      = clean_ts(ts.get("power")),
-            ts_cadence    = clean_ts(ts.get("cadence")),
-            ts_altitude   = clean_ts(ts.get("altitude")),
-            ts_distance   = clean_ts(ts.get("distance")),
-            has_power     = json.dumps(any(v for v in (ts.get("power") or []) if v)),
-            static_prefix = "../static",
-            index_href    = "../index.html",
+            activity         = activity,
+            wellness         = wellness,
+            ts_time          = clean_ts(ts.get("time")),
+            ts_hr            = clean_ts(ts.get("hr")),
+            ts_pace          = clean_ts(ts.get("pace")),
+            ts_power         = clean_ts(ts.get("power")),
+            ts_cadence       = clean_ts(ts.get("cadence")),
+            ts_altitude      = clean_ts(ts.get("altitude")),
+            ts_distance      = clean_ts(ts.get("distance")),
+            ts_stamina       = clean_ts(ts.get("stamina")),
+            ts_temperature   = clean_ts(ts.get("temperature")),
+            ts_gct           = clean_ts(ts.get("gct")),
+            ts_vo            = clean_ts(ts.get("vo")),
+            has_power        = json.dumps(any(v for v in (ts.get("power") or []) if v)),
+            static_prefix    = "../static",
+            index_href       = "../index.html",
         )
         (acts_dir / f"{act_id}.html").write_text(html, encoding="utf-8")
         print(f"  ✓ activity/{act_id}.html  ({activity.get('name','?')} — {act_date})")

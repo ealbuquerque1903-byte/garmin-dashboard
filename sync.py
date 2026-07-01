@@ -59,8 +59,9 @@ def fmt_pace(mps):
 # ── timeseries ───────────────────────────────────────────────────────────────
 
 def extract_timeseries(details: dict) -> dict:
-    series = {"time": [], "hr": [], "pace": [], "power": [],
-              "cadence": [], "altitude": [], "distance": []}
+    series = {"time": [], "hr": [], "pace": [], "power": [], "cadence": [],
+              "altitude": [], "distance": [], "stamina": [], "temperature": [],
+              "gct": [], "vo": [], "vr": [], "stride": [], "perf_cond": []}
     descriptors = details.get("metricDescriptors") or []
     metrics_pts  = details.get("activityDetailMetrics") or []
     if not descriptors or not metrics_pts:
@@ -91,24 +92,45 @@ def extract_timeseries(details: dict) -> dict:
         series["altitude"].append(round(alt, 1) if alt is not None else None)
         dist = get_val(row, "sumDistance")
         series["distance"].append(round(dist, 1) if dist is not None else None)
+        stam = get_val(row, "directAvailableStamina")
+        series["stamina"].append(round(float(stam) * 100, 1) if stam is not None else None)
+        temp = get_val(row, "directAirTemperature")
+        series["temperature"].append(round(temp, 1) if temp is not None else None)
+        gct = get_val(row, "directGroundContactTime")
+        series["gct"].append(round(gct) if gct is not None else None)
+        vo = get_val(row, "directVerticalOscillation")
+        series["vo"].append(round(vo, 1) if vo is not None else None)
+        vr = get_val(row, "directVerticalRatio")
+        series["vr"].append(round(float(vr) * 100, 1) if vr is not None else None)
+        sl = get_val(row, "directStrideLength")
+        series["stride"].append(round(sl) if sl is not None else None)
+        pc = get_val(row, "directPerformanceCondition")
+        series["perf_cond"].append(round(pc) if pc is not None else None)
     return series
 
-def extract_laps(splits_data: dict) -> list:
-    splits = (splits_data.get("splitSummaries") or []) if isinstance(splits_data, dict) else []
+def extract_laps(lap_dtos: list) -> list:
     result = []
-    for i, lap in enumerate(splits):
+    for i, lap in enumerate(lap_dtos or []):
+        dist = lap.get("distance", 0)
         result.append({
             "lap":              i + 1,
-            "distance_km":      round(float(lap.get("distance", 0)) / 1000, 2),
+            "distance_km":      round(float(dist) / 1000, 2),
             "duration":         fmt_duration(lap.get("duration")),
+            "moving_duration":  fmt_duration(lap.get("movingDuration")),
             "pace":             fmt_pace(lap.get("averageSpeed")),
             "avg_hr":           lap.get("averageHR"),
             "max_hr":           lap.get("maxHR"),
             "calories":         lap.get("calories"),
             "elevation_gain":   lap.get("elevationGain"),
+            "elevation_loss":   lap.get("elevationLoss"),
             "avg_power":        lap.get("averagePower"),
             "normalized_power": lap.get("normalizedPower"),
             "avg_cadence":      lap.get("averageRunCadence") or lap.get("averageBikingCadenceInRevPerMinute"),
+            "avg_temp":         lap.get("averageTemperature"),
+            "gct":              lap.get("groundContactTime"),
+            "vertical_osc":     lap.get("verticalOscillation"),
+            "vertical_ratio":   lap.get("verticalRatio"),
+            "stride_length":    lap.get("strideLength"),
         })
     return result
 
@@ -173,40 +195,110 @@ def fetch_wellness(client, day: date) -> dict:
 def fetch_activity(client, act: dict) -> dict:
     act_id   = act.get("activityId")
     act_date = (act.get("startTimeLocal") or "")[:10]
-    print(f"    → timeseries e splits...")
+    print(f"    → timeseries, splits, weather...")
 
-    details = splits_data = hr_zones = {}
-    try:    details     = client.get_activity_details(act_id, maxchart=2000)
+    details = {}; lap_dtos = []; hr_zones = {}; weather = {}
+    try:    details  = client.get_activity_details(act_id, maxchart=2000)
     except Exception as e: print(f"      detalhe: {e}")
-    try:    splits_data = client.get_activity_split_summaries(act_id)
+    try:
+        splits = client.get_activity_splits(act_id)
+        lap_dtos = splits.get("lapDTOs") or []
     except Exception: pass
-    try:    hr_zones    = client.get_activity_hr_in_timezones(act_id)
+    try:    hr_zones = client.get_activity_hr_in_timezones(act_id)
+    except Exception: pass
+    try:    weather  = client.get_activity_weather(act_id) or {}
     except Exception: pass
 
     timeseries = extract_timeseries(details)
-    laps       = extract_laps(splits_data)
+    laps       = extract_laps(lap_dtos)
     dist_m     = act.get("distance")
     speed      = act.get("averageSpeed")
+
+    # Stamina: pega do timeseries
+    stam_vals = [v for v in timeseries.get("stamina", []) if v is not None]
+    stamina_start = stam_vals[0]  if stam_vals else None
+    stamina_end   = stam_vals[-1] if stam_vals else None
+    stamina_min   = min(stam_vals) if stam_vals else None
+
+    # Temperatura em Fahrenheit → Celsius
+    def f_to_c(f):
+        if f is None: return None
+        return round((float(f) - 32) * 5/9, 1)
+
+    temp_c      = f_to_c(weather.get("temp"))
+    apparent_c  = f_to_c(weather.get("apparentTemp"))
+    dew_c       = f_to_c(weather.get("dewPoint"))
+
+    # Zonas FC em tempo (segundos) — do get_activities
+    hr_zone_times = [
+        act.get("hrTimeInZone_1"), act.get("hrTimeInZone_2"),
+        act.get("hrTimeInZone_3"), act.get("hrTimeInZone_4"),
+        act.get("hrTimeInZone_5"),
+    ]
 
     return {
         "id":               str(act_id),
         "date":             act_date,
         "name":             act.get("activityName", "Atividade"),
         "type":             act.get("activityType", {}).get("typeKey", "unknown"),
+        "location":         act.get("locationName"),
+        # Distância e ritmo
         "distance_km":      round(float(dist_m) / 1000, 2) if dist_m else None,
-        "duration":         fmt_duration(act.get("duration")),
-        "duration_secs":    act.get("duration"),
-        "calories":         act.get("calories"),
         "pace":             fmt_pace(speed),
         "avg_speed_mps":    speed,
+        "fastest_1k":       fmt_duration(act.get("fastestSplit_1000")),
+        "fastest_5k":       fmt_duration(act.get("fastestSplit_5000")),
+        # Tempo
+        "duration":         fmt_duration(act.get("duration")),
+        "duration_secs":    act.get("duration"),
+        "elapsed_duration": fmt_duration(act.get("elapsedDuration")),
+        "moving_duration":  fmt_duration(act.get("movingDuration")),
+        "stopped_duration": fmt_duration((act.get("elapsedDuration") or 0) - (act.get("movingDuration") or 0)),
+        # FC
         "avg_hr":           act.get("averageHR"),
         "max_hr":           act.get("maxHR"),
+        # Potência
+        "avg_power":        act.get("avgPower"),
+        "normalized_power": act.get("normPower"),
+        "max_power":        act.get("maxPower"),
+        # Outros KPIs
+        "calories":         act.get("calories"),
         "elevation_gain":   act.get("elevationGain"),
+        "elevation_loss":   act.get("elevationLoss"),
         "cadence":          act.get("averageRunningCadenceInStepsPerMinute") or act.get("averageBikingCadenceInRevPerMinute"),
+        "max_cadence":      act.get("maxRunningCadenceInStepsPerMinute"),
+        "steps":            act.get("steps"),
         "training_load":    act.get("activityTrainingLoad"),
         "vo2max":           act.get("vO2MaxValue"),
-        "avg_power":        splits_data.get("splitSummaries", [{}])[0].get("averagePower") if splits_data.get("splitSummaries") else None,
-        "normalized_power": splits_data.get("splitSummaries", [{}])[0].get("normalizedPower") if splits_data.get("splitSummaries") else None,
+        # Efeitos de treino
+        "aerobic_te":       act.get("aerobicTrainingEffect"),
+        "anaerobic_te":     act.get("anaerobicTrainingEffect"),
+        "te_label":         act.get("trainingEffectLabel"),
+        "aerobic_te_msg":   act.get("aerobicTrainingEffectMessage"),
+        "anaerobic_te_msg": act.get("anaerobicTrainingEffectMessage"),
+        # Tempo de recuperação (em horas — busca via wellness de recuperação)
+        "recovery_time":    None,  # preenchido pelo wellness se disponível
+        # Stamina
+        "stamina_start":    stamina_start,
+        "stamina_end":      stamina_end,
+        "stamina_min":      stamina_min,
+        # Dinâmica de corrida
+        "avg_gct":          act.get("avgGroundContactTime"),
+        "avg_vertical_osc": act.get("avgVerticalOscillation"),
+        "avg_vertical_ratio": act.get("avgVerticalRatio"),
+        "avg_stride_length":  act.get("avgStrideLength"),
+        # Temperatura
+        "temp_c":           temp_c,
+        "apparent_temp_c":  apparent_c,
+        "humidity":         weather.get("relativeHumidity"),
+        "dew_point_c":      dew_c,
+        "wind_speed":       weather.get("windSpeed"),
+        "wind_dir":         weather.get("windDirectionCompassPoint"),
+        "weather_desc":     (weather.get("weatherTypeDTO") or {}).get("desc"),
+        "min_temp_c":       act.get("minTemperature"),
+        "max_temp_c":       act.get("maxTemperature"),
+        # Zonas FC (tempo em segundos)
+        "hr_zone_times":    hr_zone_times,
         "hr_zones":         hr_zones,
         "timeseries":       timeseries,
         "laps":             laps,
