@@ -1,7 +1,20 @@
-name: Garmin Sync
+name: Garmin Report
 
 on:
-  workflow_dispatch:   # ativado pelo botão no app
+  workflow_dispatch:
+    inputs:
+      report_type:
+        description: 'Tipo de relatório'
+        type: choice
+        default: 'atividades'
+        options: [atividades, consolidado, ambos]
+
+concurrency:
+  group: garmin-sync
+  cancel-in-progress: false
+
+env:
+  TZ: America/Sao_Paulo
 
 jobs:
   sync:
@@ -19,16 +32,36 @@ jobs:
           python-version: "3.11"
 
       - name: Instalar dependências
-        run: pip install "garminconnect==0.2.8" garth jinja2
+        run: pip install -r requirements.txt
 
-      - name: Restaurar tokens do Garmin
+      - name: Restaurar tokens Garmin
+        env:
+          GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
         run: |
-          mkdir -p .garmin_tokens
-          echo '${{ secrets.GARMIN_OAUTH1 }}' > .garmin_tokens/oauth1_token.json
-          echo '${{ secrets.GARMIN_OAUTH2 }}' > .garmin_tokens/oauth2_token.json
+          mkdir -p .garmin_tokens_v3
+          printf '%s' "$GARMIN_TOKENS" > .garmin_tokens_v3/garmin_tokens.json
 
       - name: Sincronizar dados
+        env:
+          GARMIN_TOKEN_DIR: .garmin_tokens_v3
         run: python3 sync.py 30
+
+      - name: Persistir tokens renovados
+        # Roda sempre (if: always()) para salvar tokens rotacionados mesmo se step posterior falhar.
+        # Compara hashes SHA-256 para evitar update desnecessário e não vazar conteúdo nos logs.
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.GH_PAT_SECRETS }}
+          GARMIN_TOKENS_ORIGINAL: ${{ secrets.GARMIN_TOKENS }}
+        run: |
+          HASH_ORIG=$(printf '%s' "$GARMIN_TOKENS_ORIGINAL" | sha256sum | cut -d' ' -f1)
+          HASH_NEW=$(sha256sum .garmin_tokens_v3/garmin_tokens.json | cut -d' ' -f1)
+          if [ "$HASH_ORIG" != "$HASH_NEW" ]; then
+            gh secret set GARMIN_TOKENS --repo "$GITHUB_REPOSITORY" < .garmin_tokens_v3/garmin_tokens.json
+            echo "✓ Tokens renovados e persistidos no Secret."
+          else
+            echo "Tokens inalterados — nenhuma ação necessária."
+          fi
 
       - name: Verificar dados sincronizados
         run: |
@@ -44,11 +77,10 @@ jobs:
           print(f"✓ {acts} atividades | {well} dias bem-estar | zonas FC: {zones} | {devs} dispositivos")
           if today_data:
               d, w = today_data
-              print(f"✓ Hoje ({d}): sono={w.get('sleep_score')} HRV={w.get('hrv_avg')} FC={w.get('rhr')} battery={w.get('body_battery_charged')}")
-          if acts == 0:
-              print("ERRO: nenhuma atividade sincronizada"); sys.exit(1)
+              print(f"✓ Último bem-estar ({d}): sono={w.get('sleep_score')} HRV={w.get('hrv_avg')} FC={w.get('rhr')} battery={w.get('body_battery_charged')}")
           if well == 0:
-              print("ERRO: nenhum dia de bem-estar"); sys.exit(1)
+              print("ERRO: nenhum dia de bem-estar sincronizado")
+              sys.exit(1)
           EOF
 
       - name: Salvar history.json no repositório
@@ -61,13 +93,70 @@ jobs:
              git pull --rebase origin main && \
              git push)
 
-      - name: Gerar site estático
-        run: python3 build.py
+      - name: Gerar relatórios PDF
+        run: python3 report.py ${{ inputs.report_type }}
 
-      - name: Publicar no GitHub Pages
-        uses: peaceiris/actions-gh-pages@v4
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./dist
-          force_orphan: true
-          enable_jekyll: false
+      - name: Enviar e-mail com relatórios
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: python3 send_email.py
+
+      - name: Alerta de falha de autenticação
+        # Disparado apenas se sync.py gravou auth_failed.flag (erro de autenticação, não outro erro)
+        if: failure() && hashFiles('auth_failed.flag') != ''
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+          AUTH_FAIL_MSG_FILE: auth_failed.flag
+        run: |
+          python3 - <<'EOF'
+          import os, smtplib, socket
+          from email.mime.multipart import MIMEMultipart
+          from email.mime.text import MIMEText
+          from datetime import date
+          from pathlib import Path
+
+          flag = Path(os.environ.get("AUTH_FAIL_MSG_FILE", "auth_failed.flag"))
+          motivo = flag.read_text(encoding="utf-8").strip() if flag.exists() else "Motivo desconhecido."
+
+          host  = os.environ["SMTP_HOST"]
+          port  = int(os.environ["SMTP_PORT"])
+          user  = os.environ["SMTP_USER"]
+          pwd   = os.environ["SMTP_PASS"]
+          frm   = os.environ["MAIL_FROM"]
+          to    = os.environ["MAIL_TO"]
+
+          msg = MIMEMultipart()
+          msg["From"]    = frm
+          msg["To"]      = to
+          msg["Subject"] = f"Garmin: FALHA DE AUTENTICAÇÃO — ação necessária ({date.today()})"
+          corpo = (
+              "O workflow Garmin Report falhou por erro de autenticação.\n\n"
+              f"Motivo: {motivo}\n\n"
+              "O que fazer:\n"
+              "1. No Mac: python3 login.py\n"
+              "2. Copie o JSON exibido ao final\n"
+              "3. GitHub → Settings → Secrets → GARMIN_TOKENS → atualizar\n"
+              "4. Dispare o workflow novamente\n"
+          )
+          msg.attach(MIMEText(corpo, "plain", "utf-8"))
+
+          if port == 465:
+              srv = smtplib.SMTP_SSL(host, port, timeout=30)
+          else:
+              srv = smtplib.SMTP(host, port, timeout=30)
+              srv.ehlo(); srv.starttls(); srv.ehlo()
+          srv.login(user, pwd)
+          srv.sendmail(frm, [to], msg.as_string())
+          srv.quit()
+          print("✓ E-mail de alerta de autenticação enviado.")
+          EOF
