@@ -1,0 +1,1007 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Corrida em esteira — GarminAI</title>
+  <link rel="apple-touch-icon" href="../static/icon-180.png">
+  <link rel="icon" type="image/png" href="../static/icon-180.png">
+  <meta name="theme-color" content="#0f1117">
+  <meta name="apple-mobile-web-app-title" content="Garmin">
+  <link rel="manifest" href="../static/manifest.json">
+  <script src="../static/chart.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117; --card: #1a1d27; --card2: #22263a;
+      --accent: #00d4ff; --green: #22c55e; --yellow: #eab308;
+      --red: #ef4444; --orange: #f97316; --purple: #7c3aed;
+      --text: #e2e8f0; --muted: #64748b; --border: #2d3748;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --safe-l: env(safe-area-inset-left, 0px);
+      --safe-r: env(safe-area-inset-right, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px; line-height: 1.6;
+      padding-bottom: calc(80px + var(--safe-bot));
+      min-height: 100dvh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* ── Top nav (desktop only) ── */
+    .top-nav {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      padding-left: max(20px, var(--safe-l));
+      padding-right: max(20px, var(--safe-r));
+      display: flex; align-items: center; gap: 16px;
+      height: 52px; position: sticky; top: 0; z-index: 100;
+    }
+    .nav-brand { font-size: 17px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+    .nav-brand span { color: var(--text); }
+    .nav-spacer { flex: 1; }
+
+    /* ── Bottom tab bar (mobile) ── */
+    .bottom-bar {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 8px 0;
+      padding-bottom: max(8px, var(--safe-bot));
+      z-index: 200;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .tab-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; padding: 6px 4px; border: none; background: none;
+      color: var(--muted); font-size: 10px; font-weight: 600;
+      cursor: pointer; min-height: 52px; width: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab-btn .icon { font-size: 22px; line-height: 1; }
+    .tab-btn.sync-tab { color: var(--accent); }
+    .tab-btn.sync-tab .icon { font-size: 26px; }
+    .tab-btn:active { opacity: 0.6; }
+
+    /* ── Back button ── */
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--accent); font-size: 15px; font-weight: 500;
+      padding: 8px 0; margin-bottom: 8px;
+      background: none; border: none; cursor: pointer;
+    }
+    .back-btn:active { opacity: 0.6; }
+
+    /* ── Sync status banner ── */
+    #sync-banner {
+      display: none; position: fixed;
+      top: 52px; left: 0; right: 0; z-index: 150;
+      background: var(--accent); color: #000;
+      text-align: center; padding: 10px 16px;
+      font-weight: 700; font-size: 14px;
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 16px; }
+    .page-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+    .section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--muted); margin-bottom: 10px;
+    }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+    .card-value { font-size: 26px; font-weight: 700; }
+    .card-unit { font-size: 13px; color: var(--muted); margin-left: 3px; }
+
+    /* ── Grids ── */
+    .grid { display: grid; gap: 12px; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-6 { grid-template-columns: repeat(6, 1fr); }
+    .col-span-2 { grid-column: span 2; }
+
+    /* ── Mobile ── */
+    @media (max-width: 700px) {
+      .top-nav { display: none; }
+      .bottom-bar { display: grid; }
+      body { padding-bottom: calc(80px + var(--safe-bot)); padding-top: 0; }
+      .container { padding: 10px 10px 0; }
+      .grid-6 { grid-template-columns: repeat(3, 1fr); }
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+      .grid-2 { grid-template-columns: 1fr; }
+      .col-span-2 { grid-column: span 1; }
+      .card-value { font-size: 20px; line-height: 1.2; }
+      .card { padding: 10px 8px; border-radius: 10px; }
+      .card-title { font-size: 9px; margin-bottom: 3px; letter-spacing: .04em; }
+      .card-unit { font-size: 11px; }
+      .hide-mobile { display: none !important; }
+      .page-title { font-size: 16px; margin-bottom: 8px; }
+      .section-title { margin-bottom: 6px; font-size: 10px; }
+      /* activity row: stack name/meta + stats, não deixa vazar */
+      .activity-row { gap: 8px; padding: 10px 0; flex-wrap: nowrap; }
+      .activity-icon { width: 34px; height: 34px; font-size: 16px; border-radius: 8px; }
+      .activity-name { font-size: 12px; line-height: 1.3; }
+      .activity-meta { font-size: 10px; }
+      .activity-stats { gap: 8px; flex-shrink: 0; }
+      .stat-label { font-size: 9px; }
+      .stat-value { font-size: 12px; }
+      /* badge menor no mobile */
+      .badge { font-size: 9px; padding: 1px 6px; }
+    }
+    @media (max-width: 430px) {
+      .grid-6 { grid-template-columns: repeat(3, 1fr); }
+      .card-value { font-size: 19px; }
+      .card { padding: 9px 7px; }
+      .container { padding: 8px 8px 0; }
+      .grid { gap: 8px; }
+    }
+    @media (max-width: 380px) {
+      .grid-6 { grid-template-columns: repeat(2, 1fr); }
+      .card-value { font-size: 18px; }
+    }
+
+    /* ── Badge ── */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-green  { background: #14532d; color: var(--green); }
+    .badge-yellow { background: #713f12; color: var(--yellow); }
+    .badge-red    { background: #7f1d1d; color: var(--red); }
+    .badge-blue   { background: #1e3a5f; color: var(--accent); }
+
+    /* ── Activity row ── */
+    .activity-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .activity-row:last-child { border-bottom: none; }
+    .activity-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--card2); display: flex; align-items: center;
+      justify-content: center; font-size: 20px; flex-shrink: 0;
+    }
+    .activity-name { font-weight: 600; font-size: 14px; }
+    .activity-meta { color: var(--muted); font-size: 12px; margin-top: 1px; }
+    .activity-stats { margin-left: auto; display: flex; gap: 14px; text-align: right; flex-shrink: 0; }
+    .stat-label { font-size: 10px; color: var(--muted); }
+    .stat-value { font-size: 13px; font-weight: 600; }
+    @media (max-width: 700px) {
+      .activity-row { gap: 10px; padding: 10px 0; }
+      .activity-icon { width: 36px; height: 36px; font-size: 18px; }
+      .activity-name { font-size: 13px; }
+      .activity-meta { font-size: 11px; }
+      .activity-stats { gap: 10px; }
+      .stat-value { font-size: 12px; }
+    }
+
+    /* ── Chart ── */
+    .chart-wrap { position: relative; height: 200px; }
+    .chart-wrap-tall { height: 240px; }
+    @media (max-width: 700px) {
+      .chart-wrap { height: 150px; }
+      .chart-wrap-tall { height: 170px; }
+    }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 460px; }
+    th { text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    td { padding: 10px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--card2); }
+
+    /* ── Zone bar ── */
+    .zone-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 8px 0; }
+
+    /* ── Modal ── */
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8);
+      z-index: 300; align-items: flex-end; justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      padding: 24px 24px calc(24px + var(--safe-bot));
+      width: 100%; max-width: 500px;
+    }
+    @media (min-width: 701px) {
+      .modal-bg { align-items: center; }
+      .modal { border-radius: 16px; max-width: 440px; padding: 24px; }
+    }
+    .modal h3 { font-size: 17px; margin-bottom: 8px; }
+    .modal p { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
+    .modal input {
+      width: 100%; background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 10px; padding: 12px 14px;
+      font-size: 15px; margin-bottom: 12px; font-family: monospace;
+      -webkit-appearance: none;
+    }
+    .modal-btns { display: flex; gap: 10px; }
+    .btn { padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; flex: 1; min-height: 48px; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-ghost { background: var(--card2); color: var(--muted); }
+
+    /* ── Desktop nav buttons ── */
+    .nav-btn {
+      background: var(--accent); color: #000; border: none;
+      padding: 8px 16px; border-radius: 20px; font-size: 13px;
+      font-weight: 700; cursor: pointer; white-space: nowrap; min-height: 36px;
+    }
+    .nav-btn-ghost {
+      background: var(--card2); color: var(--muted); border: none;
+      padding: 7px 14px; border-radius: 20px; font-size: 12px;
+      font-weight: 600; cursor: pointer; white-space: nowrap; min-height: 36px;
+    }
+
+    /* ── Print ── */
+    @media print {
+      .top-nav, .bottom-bar, .modal-bg, .back-btn, #sync-banner { display: none !important; }
+      body { background: white; color: #111; padding: 0; }
+      .card { border: 1px solid #ddd; break-inside: avoid; background: white; }
+      .card-title, .section-title, .muted { color: #666 !important; }
+      a { color: #000; }
+    }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- Nav desktop -->
+<nav class="top-nav">
+  <div class="nav-brand">⌚ Garmin<span>AI</span></div>
+  <a href="../index.html" style="color:var(--muted);font-size:13px;">Dashboard</a>
+  <div class="nav-spacer"></div>
+  <button class="nav-btn" onclick="startSync()">↻ Atualizar</button>
+  <button class="nav-btn-ghost" onclick="window.print()">🖨️ PDF</button>
+</nav>
+
+<!-- Banner de sincronização -->
+<div id="sync-banner"></div>
+
+<!-- Conteúdo -->
+<div class="container">
+
+
+
+
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+  <h1 class="page-title" style="margin:0;font-size:18px;">🏃 Corrida em esteira</h1>
+  <span style="color:var(--muted);font-size:12px;">2026-06-26</span>
+</div>
+
+<!-- KPIs linha 1 -->
+<div class="grid grid-4" style="margin-bottom:12px;">
+  <div class="card">
+    <div class="card-title">📏 Distância</div>
+    <div class="card-value">5.0<span class="card-unit">km</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">⏱️ Duração</div>
+    <div class="card-value" style="font-size:18px;">33min 27s</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">
+      Em movimento: 33min 14s<br>
+      Parado: 0min 13s
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚡ Pace</div>
+    <div class="card-value" style="font-size:18px;">6:41 /km</div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">Melhor 1k: —</div>
+    <div style="color:var(--muted);font-size:11px;">Melhor 5k: —</div>
+  </div>
+  <div class="card">
+    <div class="card-title">🔥 Calorias</div>
+    <div class="card-value">506.0<span class="card-unit">kcal</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">5.130 passos</div>
+  </div>
+</div>
+
+<!-- KPIs linha 2 -->
+<div class="grid grid-4" style="margin-bottom:12px;">
+  <div class="card">
+    <div class="card-title">❤️ FC Média</div>
+    <div class="card-value">132.0<span class="card-unit">bpm</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:3px;">Máx: 137.0 bpm</div>
+  </div>
+  <div class="card">
+    <div class="card-title">💪 Potência</div>
+    <div class="card-value">558<span class="card-unit">W</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:3px;">
+      NP: 563 W ·
+      Máx: 644 W
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">🏔️ Elevação</div>
+    <div class="card-value">—<span class="card-unit">m</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:3px;">Descida: — m</div>
+  </div>
+  <div class="card">
+    <div class="card-title">🦶 Cadência</div>
+    <div class="card-value">154<span class="card-unit">ppm</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:3px;">Máx: 160.0 ppm</div>
+  </div>
+</div>
+
+<!-- KPIs linha 3 -->
+<div class="grid grid-4" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-title">📈 Carga</div>
+    <div class="card-value">46</div>
+  </div>
+  <div class="card">
+    <div class="card-title">💨 VO2max</div>
+    <div class="card-value">—</div>
+  </div>
+  <div class="card">
+    <div class="card-title">💤 Sono (dia)</div>
+    <div class="card-value">72<span class="card-unit">/100</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🎯 Prontidão</div>
+    <div class="card-value">50<span class="card-unit">/100</span></div>
+  </div>
+</div>
+
+<!-- EFEITO DE TREINO + STAMINA + CLIMA -->
+<div class="grid grid-3" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-title">🎯 Efeito de Treino</div>
+    <div style="display:flex;gap:16px;margin-top:8px;">
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Aeróbico</div>
+        <div style="font-size:32px;font-weight:700;color:var(--yellow)">
+          2.4
+        </div>
+        <div style="font-size:11px;color:var(--muted)">RECOVERY</div>
+      </div>
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted);margin-bottom:4px;">Anaeróbico</div>
+        <div style="font-size:32px;font-weight:700;color:var(--purple)">
+          —
+        </div>
+      </div>
+    </div>
+    
+    <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;display:flex;gap:12px;">
+      
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted)">Como se sentiu</div>
+        <div style="font-size:16px;font-weight:700;margin-top:4px;">Ok 😐</div>
+        <div style="font-size:11px;color:var(--muted)">50/100</div>
+      </div>
+      
+      
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted)">Esforço percebido</div>
+        <div style="font-size:16px;font-weight:700;margin-top:4px;">Muito fácil</div>
+        <div style="font-size:11px;color:var(--muted)">10/100</div>
+      </div>
+      
+      
+    </div>
+    
+  </div>
+
+  <div class="card">
+    <div class="card-title">⚡ Stamina</div>
+    <div style="display:flex;gap:12px;margin-top:8px;">
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted)">Inicial</div>
+        <div style="font-size:24px;font-weight:700;color:var(--green)">97<span style="font-size:13px">%</span></div>
+      </div>
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted)">Final</div>
+        <div style="font-size:24px;font-weight:700;color:var(--yellow)">89<span style="font-size:13px">%</span></div>
+      </div>
+      <div style="flex:1;text-align:center;">
+        <div style="font-size:11px;color:var(--muted)">Mínima</div>
+        <div style="font-size:24px;font-weight:700;color:var(--red)">89<span style="font-size:13px">%</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🌡️ Clima</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:8px;">
+      <div>
+        <div style="font-size:11px;color:var(--muted)">Temperatura</div>
+        <div style="font-weight:700;font-size:18px;">—<span style="font-size:12px;color:var(--muted)">°C</span></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted)">Sensação</div>
+        <div style="font-weight:700;font-size:18px;">—<span style="font-size:12px;color:var(--muted)">°C</span></div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted)">Umidade</div>
+        <div style="font-weight:600;">—</div>
+      </div>
+      <div>
+        <div style="font-size:11px;color:var(--muted)">Vento</div>
+        <div style="font-weight:600;">—</div>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+<!-- DINÂMICA DE CORRIDA -->
+
+<div class="section-title">Dinâmica de Corrida</div>
+<div class="grid grid-4" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-title">🦶 Contato Solo</div>
+    <div class="card-value">279<span class="card-unit">ms</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">↕️ Oscilação Vert.</div>
+    <div class="card-value">10.2<span class="card-unit">cm</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">📐 Razão Vertical</div>
+    <div class="card-value">7.1<span class="card-unit">%</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">👟 Comprimento Passada</div>
+    <div class="card-value">143<span class="card-unit">cm</span></div>
+  </div>
+</div>
+
+
+<!-- FONTE DOS DADOS -->
+
+
+<!-- GRÁFICOS -->
+<div class="section-title">Gráficos do Treino</div>
+<div class="grid grid-2" style="margin-bottom:16px;">
+  <div class="card">
+    <div class="card-title">❤️ Frequência Cardíaca</div>
+    <div class="chart-wrap chart-wrap-tall"><canvas id="chartHR"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚡ Pace</div>
+    <div class="chart-wrap chart-wrap-tall"><canvas id="chartPace"></canvas></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🦶 Cadência</div>
+    <div class="chart-wrap chart-wrap-tall"><canvas id="chartCadence"></canvas></div>
+  </div>
+  <div class="card col-span-2">
+    <div class="card-title">🏔️ Perfil de Elevação</div>
+    <div class="chart-wrap chart-wrap-tall"><canvas id="chartAltitude"></canvas></div>
+  </div>
+  <div class="card" id="staminaCard" style="display:none">
+    <div class="card-title">⚡ Stamina</div>
+    <div class="chart-wrap chart-wrap-tall"><canvas id="chartStamina"></canvas></div>
+  </div>
+  <div class="card" id="tempCard" style="display:none">
+    <div class="card-title">🌡️ Temperatura</div>
+    <div class="chart-wrap chart-wrap-tall"><canvas id="chartTemp"></canvas></div>
+  </div>
+  <div class="card" id="gctCard" style="display:none">
+    <div class="card-title">🦶 Contato Solo</div>
+    <div class="chart-wrap chart-wrap-tall"><canvas id="chartGCT"></canvas></div>
+  </div>
+  <div class="card" id="voCard" style="display:none">
+    <div class="card-title">↕️ Oscilação Vertical</div>
+    <div class="chart-wrap chart-wrap-tall"><canvas id="chartVO"></canvas></div>
+  </div>
+</div>
+
+<!-- ZONAS FC -->
+
+
+
+
+
+
+
+<div class="section-title">Zonas de Frequência Cardíaca</div>
+<div class="card" style="margin-bottom:16px;">
+  <div class="zone-bar" style="height:14px;margin-bottom:16px;">
+    
+    <div style="width:3.162772251381181%;background:#3b82f6;"></div>
+    
+    <div style="width:96.83722774861882%;background:#22c55e;"></div>
+    
+    <div style="width:0.0%;background:#eab308;"></div>
+    
+    <div style="width:0.0%;background:#f97316;"></div>
+    
+    <div style="width:0.0%;background:#ef4444;"></div>
+    
+  </div>
+  <div class="grid grid-4" style="gap:10px;">
+  
+  
+  
+  
+  
+  <div style="border-left:3px solid #3b82f6;padding-left:10px;">
+    <div style="font-size:10px;color:var(--muted);">Z1 Recuperação</div>
+    
+    <div style="font-weight:700;font-size:20px;">3%</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text);">1:03 min</div>
+  </div>
+  
+  
+  
+  
+  
+  <div style="border-left:3px solid #22c55e;padding-left:10px;">
+    <div style="font-size:10px;color:var(--muted);">Z2 Aeróbico</div>
+    
+    <div style="font-weight:700;font-size:20px;">97%</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text);">32:08 min</div>
+  </div>
+  
+  
+  
+  
+  
+  <div style="border-left:3px solid #eab308;padding-left:10px;">
+    <div style="font-size:10px;color:var(--muted);">Z3 Tempo</div>
+    
+    <div style="font-weight:700;font-size:20px;">0%</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text);">0:00 min</div>
+  </div>
+  
+  
+  
+  
+  
+  <div style="border-left:3px solid #f97316;padding-left:10px;">
+    <div style="font-size:10px;color:var(--muted);">Z4 Limiar</div>
+    
+    <div style="font-weight:700;font-size:20px;">0%</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text);">0:00 min</div>
+  </div>
+  
+  
+  
+  
+  
+  <div style="border-left:3px solid #ef4444;padding-left:10px;">
+    <div style="font-size:10px;color:var(--muted);">Z5 VO2max</div>
+    
+    <div style="font-weight:700;font-size:20px;">0%</div>
+    <div style="font-size:13px;font-weight:600;color:var(--text);">0:00 min</div>
+  </div>
+  
+  </div>
+</div>
+
+
+
+<!-- SPLITS POR KM -->
+
+<div class="section-title">Splits por km</div>
+<div class="card splits-card" style="margin-bottom:16px;">
+  <div class="table-wrap">
+    <table class="splits-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Dist.</th><th>Tempo</th><th>Pace</th>
+          <th>FC M</th><th>FC X</th><th>Pot.</th>
+          <th>Cad.</th><th>Elev↑</th><th>Pass.</th><th>GCT</th><th>Oscil.</th><th>V.R.</th><th>Temp.</th>
+        </tr>
+      </thead>
+      <tbody>
+      
+      <tr>
+        <td style="color:var(--muted)">1</td>
+        <td>1.0</td>
+        <td>4min 45s</td>
+        <td style="font-weight:600;color:var(--accent)">4:45 /km</td>
+        <td>122.0</td>
+        <td>131.0</td>
+        <td>530</td>
+        <td>148</td>
+        <td>—</td>
+        <td>142</td>
+        <td>282</td>
+        <td>10.2</td>
+        <td>7.2</td>
+        <td>—</td>
+      </tr>
+      
+      <tr>
+        <td style="color:var(--muted)">2</td>
+        <td>1.0</td>
+        <td>4min 30s</td>
+        <td style="font-weight:600;color:var(--accent)">4:30 /km</td>
+        <td>132.0</td>
+        <td>135.0</td>
+        <td>539</td>
+        <td>155</td>
+        <td>—</td>
+        <td>143</td>
+        <td>280</td>
+        <td>10.2</td>
+        <td>7.1</td>
+        <td>—</td>
+      </tr>
+      
+      <tr>
+        <td style="color:var(--muted)">3</td>
+        <td>1.0</td>
+        <td>4min 29s</td>
+        <td style="font-weight:600;color:var(--accent)">4:29 /km</td>
+        <td>134.0</td>
+        <td>137.0</td>
+        <td>572</td>
+        <td>155</td>
+        <td>—</td>
+        <td>143</td>
+        <td>279</td>
+        <td>10.2</td>
+        <td>7.1</td>
+        <td>—</td>
+      </tr>
+      
+      <tr>
+        <td style="color:var(--muted)">4</td>
+        <td>1.0</td>
+        <td>4min 29s</td>
+        <td style="font-weight:600;color:var(--accent)">4:29 /km</td>
+        <td>134.0</td>
+        <td>136.0</td>
+        <td>578</td>
+        <td>155</td>
+        <td>—</td>
+        <td>143</td>
+        <td>279</td>
+        <td>10.2</td>
+        <td>7.1</td>
+        <td>—</td>
+      </tr>
+      
+      <tr>
+        <td style="color:var(--muted)">5</td>
+        <td>1.0</td>
+        <td>4min 29s</td>
+        <td style="font-weight:600;color:var(--accent)">4:29 /km</td>
+        <td>134.0</td>
+        <td>137.0</td>
+        <td>567</td>
+        <td>155</td>
+        <td>—</td>
+        <td>143</td>
+        <td>279</td>
+        <td>10.2</td>
+        <td>7.1</td>
+        <td>—</td>
+      </tr>
+      
+      <tr>
+        <td style="color:var(--muted)">6</td>
+        <td>1.0</td>
+        <td>4min 34s</td>
+        <td style="font-weight:600;color:var(--accent)">4:34 /km</td>
+        <td>133.0</td>
+        <td>135.0</td>
+        <td>547</td>
+        <td>156</td>
+        <td>—</td>
+        <td>140</td>
+        <td>278</td>
+        <td>10.1</td>
+        <td>7.2</td>
+        <td>—</td>
+      </tr>
+      
+      <tr>
+        <td style="color:var(--muted)">7</td>
+        <td>1.0</td>
+        <td>4min 29s</td>
+        <td style="font-weight:600;color:var(--accent)">4:29 /km</td>
+        <td>132.0</td>
+        <td>134.0</td>
+        <td>566</td>
+        <td>156</td>
+        <td>—</td>
+        <td>143</td>
+        <td>277</td>
+        <td>10.2</td>
+        <td>7.1</td>
+        <td>—</td>
+      </tr>
+      
+      <tr>
+        <td style="color:var(--muted)">8</td>
+        <td>0.37</td>
+        <td>1min 38s</td>
+        <td style="font-weight:600;color:var(--accent)">4:28 /km</td>
+        <td>133.0</td>
+        <td>134.0</td>
+        <td>576</td>
+        <td>155</td>
+        <td>—</td>
+        <td>142</td>
+        <td>280</td>
+        <td>10.2</td>
+        <td>7.2</td>
+        <td>—</td>
+      </tr>
+      
+      </tbody>
+    </table>
+  </div>
+</div>
+<style>
+.splits-table { font-size: 11px; }
+.splits-table th, .splits-table td { padding: 4px 6px; white-space: nowrap; }
+@media print {
+  @page { size: landscape; margin: 10mm; }
+  .splits-card { page-break-inside: avoid; }
+  .splits-table { font-size: 9px; }
+  .splits-table th, .splits-table td { padding: 3px 4px; }
+}
+</style>
+
+
+</div>
+
+<!-- Bottom bar mobile -->
+<div class="bottom-bar">
+  <button class="tab-btn" onclick="goBack()">
+    <span class="icon">←</span>
+    <span>Voltar</span>
+  </button>
+  <button class="tab-btn" onclick="window.location.href='../index.html'">
+    <span class="icon">📊</span>
+    <span>Dashboard</span>
+  </button>
+  <button class="tab-btn sync-tab" id="mobile-sync-btn" onclick="startSync()">
+    <span class="icon" id="mobile-sync-icon">↻</span>
+    <span id="mobile-sync-label">Atualizar</span>
+  </button>
+  <button class="tab-btn" onclick="window.print()">
+    <span class="icon">🖨️</span>
+    <span>PDF</span>
+  </button>
+</div>
+
+<!-- Modal token -->
+<div class="modal-bg" id="token-modal">
+  <div class="modal">
+    <h3>🔑 Configurar acesso</h3>
+    <p>Crie um <strong>GitHub Token</strong> em:<br>
+    github.com → Settings → Developer settings → Personal access tokens (classic)<br>
+    Escopos necessários: <strong>repo</strong> + <strong>workflow</strong></p>
+    <input type="password" id="token-input" placeholder="ghp_..." autocomplete="off" autocorrect="off" autocapitalize="none">
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveToken()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/garmin-dashboard/static/sw.js', { scope: '/garmin-dashboard/' })
+    .then(reg => reg.update());
+}
+
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#2d3748';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+Chart.defaults.font.size = 11;
+
+const REPO_OWNER = 'ealbuquerque1903-byte';
+const REPO_NAME  = 'garmin-dashboard';
+const WORKFLOW   = 'sync.yml';
+
+function goBack() {
+  if (window.history.length > 1) window.history.back();
+  else window.location.href = '../index.html';
+}
+function getToken() { return localStorage.getItem('gh_pat'); }
+function closeModal() { document.getElementById('token-modal').classList.remove('open'); }
+function saveToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) return;
+  localStorage.setItem('gh_pat', t);
+  closeModal();
+  startSync();
+}
+
+function setSyncState(label, icon, running) {
+  const banner = document.getElementById('sync-banner');
+  const mIcon  = document.getElementById('mobile-sync-icon');
+  const mLabel = document.getElementById('mobile-sync-label');
+  const mBtn   = document.getElementById('mobile-sync-btn');
+  if (banner) { banner.textContent = label; banner.style.display = running ? 'block' : 'none'; }
+  if (mIcon)  mIcon.textContent  = icon;
+  if (mLabel) mLabel.textContent = label;
+  if (mBtn)   mBtn.disabled = running;
+}
+
+async function startSync() {
+  const token = getToken();
+  if (!token) { document.getElementById('token-modal').classList.add('open'); return; }
+
+  setSyncState('Iniciando...', '⏳', true);
+
+  try {
+    const triggerTime = Date.now();
+    const res = await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW}/dispatches`,
+      { method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: 'main' }) }
+    );
+    if (res.status === 204) {
+      setSyncState('Sincronizando...', '⏳', true);
+      pollWorkflow(token, triggerTime);
+    } else if (res.status === 401) {
+      localStorage.removeItem('gh_pat');
+      setSyncState('Token inválido', '↻', false);
+      setTimeout(() => setSyncState('Atualizar', '↻', false), 3000);
+      document.getElementById('token-modal').classList.add('open');
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch(e) {
+    setSyncState('Erro: ' + e.message, '↻', false);
+    setTimeout(() => setSyncState('Atualizar', '↻', false), 4000);
+  }
+}
+
+async function pollWorkflow(token, triggerTime, attempt = 0) {
+  const MAX_ATTEMPTS = 60; // 10 min (60 × 10s)
+  if (attempt >= MAX_ATTEMPTS) {
+    setSyncState('Timeout — recarregue manualmente', '↻', false);
+    return;
+  }
+  // Aguarda 8s antes da primeira verificação (o Actions leva alguns segundos pra registrar o run)
+  await new Promise(r => setTimeout(r, attempt === 0 ? 8000 : 10000));
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs?event=workflow_dispatch&per_page=5`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    const data = await r.json();
+    // Encontra o run disparado depois do nosso clique
+    const run = (data.workflow_runs || []).find(run => {
+      const created = new Date(run.created_at).getTime();
+      return created >= triggerTime - 30000; // 30s de tolerância
+    });
+    if (!run) {
+      setSyncState('Aguardando início...', '⏳', true);
+      return pollWorkflow(token, triggerTime, attempt + 1);
+    }
+    if (run.status === 'completed') {
+      if (run.conclusion === 'success') {
+        // Aguarda 30s para o GitHub Pages propagar o novo deploy antes de recarregar
+        let secs = 30;
+        const tick = () => {
+          setSyncState(`Publicando... (${secs}s)`, '✓', false);
+          if (secs-- > 0) { setTimeout(tick, 1000); }
+          else {
+            const base = window.location.href.split('?')[0];
+            window.location.replace(base + '?t=' + Date.now());
+          }
+        };
+        tick();
+      } else {
+        setSyncState('Falha no sync — veja GitHub Actions', '↻', false);
+        setTimeout(() => setSyncState('Atualizar', '↻', false), 5000);
+      }
+      return;
+    }
+    // Ainda rodando — mostra status
+    const labels = { queued: 'Na fila...', in_progress: 'Sincronizando...' };
+    setSyncState(labels[run.status] || 'Sincronizando...', '⏳', true);
+    pollWorkflow(token, triggerTime, attempt + 1);
+  } catch(e) {
+    pollWorkflow(token, triggerTime, attempt + 1);
+  }
+}
+</script>
+
+<script>
+const TS_TIME        = [0.0, 2.0, 4.0, 6.0, 8.0, 10.0, 12.0, 13.0, 14.0, 15.0, 16.0, 18.0, 20.0, 22.0, 24.0, 26.0, 28.0, 30.0, 32.0, 34.0, 35.0, 36.0, 38.0, 40.0, 42.0, 44.0, 46.0, 48.0, 50.0, 52.0, 54.0, 56.0, 58.0, 60.0, 62.0, 64.0, 66.0, 68.0, 70.0, 72.0, 74.0, 76.0, 78.0, 80.0, 82.0, 84.0, 86.0, 88.0, 90.0, 92.0, 94.0, 96.0, 98.0, 100.0, 102.0, 104.0, 106.0, 108.0, 110.0, 112.0, 114.0, 116.0, 118.0, 120.0, 122.0, 124.0, 126.0, 128.0, 130.0, 132.0, 134.0, 136.0, 138.0, 140.0, 142.0, 144.0, 146.0, 148.0, 150.0, 152.0, 154.0, 156.0, 158.0, 160.0, 162.0, 164.0, 166.0, 168.0, 170.0, 172.0, 174.0, 176.0, 178.0, 180.0, 182.0, 184.0, 186.0, 188.0, 190.0, 192.0, 194.0, 196.0, 198.0, 200.0, 202.0, 204.0, 206.0, 208.0, 210.0, 212.0, 214.0, 216.0, 218.0, 220.0, 222.0, 224.0, 226.0, 228.0, 230.0, 232.0, 234.0, 236.0, 238.0, 240.0, 242.0, 244.0, 246.0, 248.0, 250.0, 252.0, 254.0, 256.0, 258.0, 260.0, 262.0, 264.0, 266.0, 268.0, 270.0, 272.0, 274.0, 276.0, 278.0, 280.0, 282.0, 284.0, 286.0, 288.0, 290.0, 292.0, 294.0, 296.0, 298.0, 300.0, 302.0, 304.0, 306.0, 308.0, 310.0, 312.0, 314.0, 316.0, 318.0, 320.0, 322.0, 324.0, 326.0, 328.0, 330.0, 332.0, 334.0, 336.0, 338.0, 340.0, 342.0, 344.0, 346.0, 348.0, 350.0, 352.0, 354.0, 356.0, 358.0, 360.0, 362.0, 364.0, 366.0, 368.0, 370.0, 372.0, 374.0, 376.0, 378.0, 380.0, 382.0, 384.0, 386.0, 388.0, 390.0, 392.0, 394.0, 396.0, 398.0, 400.0, 402.0, 404.0, 406.0, 408.0, 410.0, 412.0, 414.0, 416.0, 418.0, 420.0, 422.0, 424.0, 426.0, 428.0, 430.0, 432.0, 434.0, 436.0, 438.0, 440.0, 442.0, 444.0, 446.0, 448.0, 450.0, 452.0, 454.0, 456.0, 458.0, 460.0, 462.0, 464.0, 466.0, 468.0, 470.0, 472.0, 474.0, 476.0, 478.0, 480.0, 482.0, 484.0, 486.0, 488.0, 490.0, 492.0, 494.0, 496.0, 498.0, 500.0, 502.0, 504.0, 506.0, 508.0, 510.0, 512.0, 514.0, 516.0, 518.0, 520.0, 522.0, 524.0, 526.0, 528.0, 530.0, 532.0, 534.0, 536.0, 538.0, 540.0, 542.0, 544.0, 546.0, 548.0, 550.0, 552.0, 554.0, 556.0, 558.0, 560.0, 562.0, 564.0, 566.0, 568.0, 570.0, 572.0, 574.0, 576.0, 578.0, 580.0, 582.0, 584.0, 586.0, 588.0, 590.0, 592.0, 594.0, 596.0, 598.0, 600.0, 602.0, 604.0, 606.0, 608.0, 610.0, 612.0, 614.0, 616.0, 618.0, 620.0, 622.0, 624.0, 626.0, 628.0, 630.0, 632.0, 634.0, 636.0, 638.0, 640.0, 642.0, 644.0, 646.0, 648.0, 650.0, 652.0, 654.0, 656.0, 658.0, 660.0, 662.0, 664.0, 666.0, 668.0, 670.0, 672.0, 674.0, 676.0, 678.0, 680.0, 682.0, 684.0, 686.0, 688.0, 690.0, 692.0, 694.0, 696.0, 698.0, 700.0, 702.0, 704.0, 706.0, 708.0, 710.0, 712.0, 714.0, 716.0, 718.0, 720.0, 722.0, 724.0, 726.0, 728.0, 730.0, 732.0, 734.0, 736.0, 738.0, 739.0, 740.0, 742.0, 744.0, 746.0, 748.0, 750.0, 752.0, 754.0, 756.0, 758.0, 760.0, 762.0, 764.0, 766.0, 768.0, 770.0, 772.0, 774.0, 776.0, 778.0, 780.0, 782.0, 784.0, 786.0, 788.0, 790.0, 792.0, 794.0, 796.0, 798.0, 800.0, 802.0, 804.0, 806.0, 808.0, 810.0, 812.0, 814.0, 816.0, 818.0, 820.0, 822.0, 824.0, 826.0, 828.0, 830.0, 832.0, 834.0, 836.0, 838.0, 840.0, 842.0, 844.0, 846.0, 848.0, 850.0, 852.0, 854.0, 856.0, 858.0, 860.0, 862.0, 864.0, 866.0, 868.0, 870.0, 872.0, 874.0, 876.0, 878.0, 880.0, 882.0, 884.0, 886.0, 888.0, 890.0, 892.0, 894.0, 896.0, 898.0, 900.0, 902.0, 904.0, 906.0, 908.0, 910.0, 912.0, 914.0, 916.0, 918.0, 920.0, 922.0, 924.0, 926.0, 928.0, 930.0, 932.0, 934.0, 936.0, 938.0, 940.0, 942.0, 944.0, 946.0, 948.0, 950.0, 952.0, 954.0, 956.0, 958.0, 960.0, 962.0, 964.0, 966.0, 968.0, 970.0, 972.0, 974.0, 976.0, 978.0, 980.0, 982.0, 984.0, 986.0, 988.0, 990.0, 992.0, 994.0, 996.0, 998.0, 1000.0, 1002.0, 1004.0, 1006.0, 1008.0, 1010.0, 1012.0, 1014.0, 1016.0, 1018.0, 1020.0, 1022.0, 1024.0, 1026.0, 1028.0, 1030.0, 1032.0, 1034.0, 1036.0, 1038.0, 1040.0, 1042.0, 1044.0, 1046.0, 1048.0, 1050.0, 1052.0, 1054.0, 1056.0, 1058.0, 1060.0, 1062.0, 1064.0, 1066.0, 1068.0, 1070.0, 1072.0, 1074.0, 1076.0, 1078.0, 1080.0, 1082.0, 1084.0, 1086.0, 1088.0, 1090.0, 1092.0, 1094.0, 1096.0, 1098.0, 1100.0, 1102.0, 1104.0, 1106.0, 1108.0, 1110.0, 1112.0, 1114.0, 1116.0, 1118.0, 1120.0, 1122.0, 1124.0, 1126.0, 1128.0, 1130.0, 1132.0, 1134.0, 1136.0, 1138.0, 1140.0, 1142.0, 1144.0, 1146.0, 1148.0, 1150.0, 1152.0, 1154.0, 1156.0, 1158.0, 1160.0, 1162.0, 1164.0, 1166.0, 1168.0, 1170.0, 1172.0, 1174.0, 1176.0, 1178.0, 1180.0, 1182.0, 1184.0, 1186.0, 1188.0, 1190.0, 1192.0, 1194.0, 1196.0, 1198.0, 1200.0, 1202.0, 1204.0, 1206.0, 1208.0, 1210.0, 1212.0, 1214.0, 1216.0, 1218.0, 1220.0, 1222.0, 1224.0, 1226.0, 1228.0, 1230.0, 1232.0, 1234.0, 1236.0, 1238.0, 1240.0, 1242.0, 1244.0, 1246.0, 1248.0, 1250.0, 1252.0, 1254.0, 1256.0, 1258.0, 1260.0, 1262.0, 1264.0, 1266.0, 1268.0, 1270.0, 1272.0, 1274.0, 1276.0, 1278.0, 1280.0, 1282.0, 1284.0, 1286.0, 1288.0, 1290.0, 1292.0, 1294.0, 1296.0, 1298.0, 1300.0, 1302.0, 1304.0, 1306.0, 1308.0, 1310.0, 1312.0, 1314.0, 1316.0, 1318.0, 1320.0, 1322.0, 1324.0, 1326.0, 1328.0, 1330.0, 1332.0, 1334.0, 1336.0, 1338.0, 1340.0, 1342.0, 1344.0, 1346.0, 1348.0, 1350.0, 1352.0, 1354.0, 1356.0, 1358.0, 1360.0, 1362.0, 1364.0, 1366.0, 1368.0, 1370.0, 1372.0, 1374.0, 1376.0, 1378.0, 1380.0, 1382.0, 1384.0, 1386.0, 1388.0, 1390.0, 1392.0, 1394.0, 1396.0, 1397.0, 1398.0, 1400.0, 1402.0, 1404.0, 1406.0, 1408.0, 1410.0, 1412.0, 1414.0, 1416.0, 1418.0, 1420.0, 1422.0, 1424.0, 1426.0, 1428.0, 1430.0, 1432.0, 1434.0, 1436.0, 1438.0, 1440.0, 1442.0, 1444.0, 1446.0, 1448.0, 1450.0, 1452.0, 1454.0, 1456.0, 1458.0, 1460.0, 1462.0, 1464.0, 1466.0, 1468.0, 1470.0, 1472.0, 1474.0, 1476.0, 1478.0, 1480.0, 1482.0, 1484.0, 1486.0, 1488.0, 1490.0, 1492.0, 1494.0, 1496.0, 1498.0, 1500.0, 1502.0, 1504.0, 1506.0, 1508.0, 1509.0, 1510.0, 1512.0, 1514.0, 1516.0, 1518.0, 1520.0, 1522.0, 1524.0, 1526.0, 1528.0, 1530.0, 1532.0, 1534.0, 1536.0, 1538.0, 1540.0, 1542.0, 1544.0, 1546.0, 1548.0, 1550.0, 1552.0, 1554.0, 1556.0, 1558.0, 1560.0, 1562.0, 1564.0, 1566.0, 1568.0, 1570.0, 1572.0, 1574.0, 1576.0, 1578.0, 1580.0, 1582.0, 1584.0, 1586.0, 1588.0, 1590.0, 1592.0, 1594.0, 1596.0, 1598.0, 1600.0, 1602.0, 1604.0, 1606.0, 1608.0, 1610.0, 1612.0, 1614.0, 1616.0, 1618.0, 1620.0, 1622.0, 1624.0, 1626.0, 1628.0, 1630.0, 1632.0, 1634.0, 1636.0, 1638.0, 1640.0, 1642.0, 1644.0, 1646.0, 1648.0, 1650.0, 1652.0, 1654.0, 1656.0, 1658.0, 1660.0, 1662.0, 1664.0, 1666.0, 1668.0, 1670.0, 1672.0, 1674.0, 1676.0, 1678.0, 1680.0, 1682.0, 1684.0, 1686.0, 1688.0, 1690.0, 1692.0, 1694.0, 1696.0, 1697.0, 1698.0, 1700.0, 1702.0, 1704.0, 1706.0, 1708.0, 1710.0, 1712.0, 1714.0, 1716.0, 1718.0, 1720.0, 1722.0, 1724.0, 1726.0, 1728.0, 1730.0, 1732.0, 1734.0, 1736.0, 1738.0, 1740.0, 1742.0, 1744.0, 1746.0, 1748.0, 1750.0, 1752.0, 1754.0, 1756.0, 1758.0, 1760.0, 1762.0, 1764.0, 1766.0, 1768.0, 1770.0, 1772.0, 1774.0, 1776.0, 1778.0, 1780.0, 1782.0, 1784.0, 1786.0, 1788.0, 1790.0, 1792.0, 1794.0, 1796.0, 1798.0, 1800.0, 1802.0, 1804.0, 1806.0, 1808.0, 1810.0, 1812.0, 1814.0, 1816.0, 1818.0, 1820.0, 1822.0, 1824.0, 1826.0, 1827.0, 1828.0, 1830.0, 1832.0, 1834.0, 1836.0, 1838.0, 1840.0, 1842.0, 1844.0, 1846.0, 1848.0, 1850.0, 1852.0, 1854.0, 1856.0, 1858.0, 1860.0, 1862.0, 1864.0, 1866.0, 1868.0, 1870.0, 1872.0, 1874.0, 1876.0, 1878.0, 1880.0, 1882.0, 1884.0, 1886.0, 1888.0, 1890.0, 1892.0, 1894.0, 1896.0, 1898.0, 1900.0, 1902.0, 1904.0, 1906.0, 1908.0, 1910.0, 1912.0, 1914.0, 1916.0, 1918.0, 1920.0, 1922.0, 1924.0, 1926.0, 1928.0, 1930.0, 1932.0, 1934.0, 1936.0, 1938.0, 1940.0, 1942.0, 1944.0, 1946.0, 1948.0, 1950.0, 1952.0, 1954.0, 1956.0, 1958.0, 1960.0, 1962.0, 1964.0, 1966.0, 1968.0, 1970.0, 1972.0, 1974.0, 1976.0, 1978.0, 1980.0, 1982.0, 1984.0, 1986.0, 1988.0, 1990.0, 1992.0, 1994.0, 1996.0, 1998.0, 1999.0, 2000.0, 2002.0, 2004.0, 2006.0, 2008.0];
+const TS_HR          = [86, 86, 87, 87, 87, 88, 90, 91, 91, 91, 92, 95, 96, 97, 99, 99, 100, 102, 107, 108, 109, 110, 110, 111, 111, 111, 112, 113, 112, 113, 113, 114, 115, 117, 118, 119, 120, 122, 123, 124, 125, 126, 127, 127, 128, 127, 128, 128, 129, 129, 129, 128, 128, 128, 128, 129, 128, 127, 127, 126, 126, 127, 127, 127, 127, 127, 126, 127, 127, 126, 126, 126, 126, 126, 126, 126, 126, 126, 126, 126, 126, 126, 126, 127, 126, 127, 127, 128, 128, 128, 128, 128, 128, 128, 128, 128, 128, 129, 128, 129, 129, 128, 128, 128, 128, 128, 128, 128, 128, 129, 129, 129, 130, 129, 129, 128, 128, 128, 128, 128, 128, 128, 129, 130, 130, 130, 131, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 129, 128, 129, 129, 129, 130, 130, 130, 131, 131, 132, 132, 132, 132, 132, 132, 132, 132, 132, 131, 131, 131, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 130, 131, 132, 132, 132, 132, 132, 133, 132, 133, 133, 134, 134, 134, 134, 133, 134, 133, 133, 133, 132, 132, 132, 132, 132, 132, 133, 133, 133, 134, 134, 134, 134, 134, 134, 134, 134, 134, 133, 132, 132, 132, 133, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 133, 134, 133, 133, 132, 132, 133, 133, 131, 130, 131, 132, 133, 133, 134, 134, 134, 134, 133, 133, 134, 134, 134, 134, 135, 134, 134, 135, 134, 134, 134, 134, 135, 135, 135, 135, 134, 134, 135, 134, 134, 134, 134, 134, 134, 134, 134, 134, 135, 134, 134, 134, 134, 134, 134, 134, 134, 134, 133, 134, 134, 134, 134, 134, 134, 135, 134, 134, 134, 134, 133, 134, 133, 134, 134, 134, 134, 134, 134, 133, 134, 134, 133, 133, 134, 134, 134, 134, 134, 134, 133, 134, 134, 134, 134, 134, 134, 133, 134, 134, 134, 134, 134, 134, 135, 134, 134, 135, 134, 135, 134, 135, 136, 136, 136, 135, 134, 135, 137, 136, 136, 136, 135, 134, 134, 135, 134, 134, 135, 134, 134, 135, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 133, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 133, 132, 132, 133, 133, 134, 134, 134, 134, 134, 134, 134, 135, 134, 134, 135, 134, 134, 134, 134, 133, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 133, 133, 132, 133, 134, 133, 133, 133, 134, 134, 134, 135, 134, 135, 134, 134, 134, 134, 135, 134, 134, 134, 133, 133, 133, 132, 132, 132, 133, 133, 134, 134, 134, 134, 133, 132, 132, 133, 133, 134, 133, 134, 133, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 135, 136, 136, 136, 136, 135, 134, 135, 135, 135, 135, 134, 134, 134, 135, 134, 134, 134, 134, 134, 133, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 133, 132, 132, 132, 132, 132, 133, 133, 133, 133, 133, 134, 134, 134, 134, 134, 133, 134, 134, 134, 135, 134, 134, 134, 134, 134, 135, 134, 134, 133, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 135, 135, 136, 136, 136, 136, 136, 136, 136, 136, 136, 137, 137, 137, 137, 136, 136, 136, 136, 136, 136, 136, 135, 135, 134, 135, 134, 135, 135, 135, 134, 133, 133, 132, 132, 132, 132, 132, 132, 132, 133, 132, 132, 133, 133, 133, 134, 134, 134, 134, 134, 134, 134, 135, 134, 134, 134, 134, 134, 134, 134, 134, 133, 134, 134, 133, 133, 132, 132, 132, 132, 132, 131, 132, 131, 132, 131, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 131, 132, 132, 132, 132, 132, 132, 133, 133, 132, 132, 132, 132, 132, 132, 132, 133, 133, 133, 134, 134, 133, 134, 134, 134, 134, 134, 134, 133, 134, 134, 133, 133, 133, 132, 132, 132, 132, 132, 131, 132, 132, 132, 133, 133, 133, 133, 133, 134, 134, 134, 134, 134, 133, 134, 133, 133, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 133, 133, 133, 133, 134, 134, 134, 134, 133, 133, 133, 133, 132, 132, 132, 131, 129, 128, 127, 126, 126, 125, 125, 125, 132, 132, 133, 132, 133, 132, 133, 132, 132, 132, 132, 132, 132, 132, 132, 132, 133, 133, 133, 134, 134, 134, 134, 134, 133, 134, 134, 134, 134, 134, 133, 133, 133, 132, 133, 133, 133, 133, 134, 134, 134, 134, 134, 134, 134, 135, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 133, 133, 133, 133, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 133, 132, 132, 132, 131, 132, 132, 132, 132, 132, 131, 131, 131, 131, 132, 132, 132, 132, 132, 133, 133, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 134, 133, 133, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 132, 133, 132, 132, 133, 133, 133, 132, 132, 132, 132, 132, 131, 131, 130, 130, 131, 131, 131, 132, 133, 132, 132, 132, 132, 132, 132, 133, 133, 133, 133, 134, 134, 133, 132, 132, 131, 132, 131, 132, 133, 133, 133, 132, 133, 133, 132, 132, 132, 132, 130, 131, 131, 132, 132, 132, 133, 132, 132, 132, 133, 132, 132, 132, 132, 133, 132, 132, 132, 132, 132, 132, 132, 133, 134, 134, 134, 132, 132, 133, 133, 133, 133, 133, 133, 133, 134, 134, 133, 134, 134, 134, 134, 134, 133, 134, 134, 134, 134, 134, 133, 133, 132, 132, 132, 133, 132, 132, 132, 133, 133, 133, 133, 134, 134, 133, 132, 132, 132, 132, 132, 133, 132, 133];
+const TS_PACE        = [null, null, null, null, null, null, null, 1428.6, 634.1, 466.0, 377.4, 301.9, 285.1, 284.3, 283.5, 292.8, 294.5, 285.8, 284.3, 272.0, 270.6, 270.6, 266.0, 266.0, 268.0, 267.2, 268.0, 270.6, 270.6, 270.0, 270.6, 272.7, 272.0, 270.6, 270.0, 271.3, 274.1, 274.1, 274.1, 272.0, 270.6, 270.6, 271.3, 272.0, 272.0, 271.3, 271.3, 270.6, 270.6, 276.9, 285.1, 287.4, 277.6, 268.6, 272.0, 273.4, 273.4, 273.4, 272.0, 270.0, 269.3, 270.0, 270.0, 270.0, 269.3, 268.0, 269.3, 270.6, 270.6, 271.3, 270.6, 270.6, 272.7, 274.1, 273.4, 270.6, 269.3, 270.6, 270.6, 269.3, 269.3, 268.0, 266.6, 266.6, 266.6, 266.0, 266.0, 266.0, 268.6, 270.6, 270.6, 270.6, 271.3, 270.0, 270.0, 270.0, 271.3, 271.3, 272.7, 272.0, 274.8, 274.1, 271.3, 271.3, 273.4, 274.8, 274.1, 272.0, 269.3, 269.3, 270.6, 269.3, 268.6, 268.0, 268.6, 271.3, 271.3, 271.3, 271.3, 270.0, 268.0, 267.2, 266.6, 266.0, 265.3, 265.3, 266.6, 266.6, 266.6, 268.0, 269.3, 268.0, 267.2, 268.6, 268.0, 268.0, 268.0, 268.0, 268.0, 268.6, 269.3, 268.6, 268.0, 268.6, 269.3, 268.0, 266.6, 266.0, 267.2, 270.6, 274.8, 276.2, 275.5, 274.1, 271.3, 266.0, 267.2, 267.2, 268.0, 268.6, 268.6, 269.3, 269.3, 270.6, 273.4, 272.0, 270.0, 268.0, 269.3, 270.0, 270.0, 270.0, 270.6, 271.3, 270.0, 270.0, 270.0, 268.6, 267.2, 266.0, 266.0, 266.6, 266.6, 268.6, 267.2, 268.6, 269.3, 268.6, 268.6, 268.0, 267.2, 270.0, 271.3, 272.0, 272.0, 269.3, 270.0, 274.1, 274.1, 272.7, 270.0, 268.6, 268.0, 270.6, 269.3, 268.6, 270.0, 271.3, 271.3, 269.3, 268.0, 268.0, 266.6, 265.3, 266.0, 266.6, 266.6, 266.6, 267.2, 267.2, 267.2, 268.0, 267.2, 267.2, 268.0, 267.2, 268.0, 268.6, 268.6, 268.6, 269.3, 269.3, 269.3, 269.3, 268.6, 268.6, 268.0, 268.6, 268.6, 268.6, 270.6, 270.0, 270.0, 272.0, 273.4, 273.4, 274.1, 273.4, 272.7, 272.0, 270.0, 269.3, 271.3, 274.8, 274.1, 274.1, 274.8, 272.0, 274.1, 313.4, 296.9, 280.6, 275.5, 271.3, 271.3, 274.1, 272.7, 270.0, 268.6, 268.0, 267.2, 267.2, 268.0, 268.0, 268.0, 268.6, 270.6, 271.3, 270.0, 270.0, 270.6, 272.0, 272.0, 270.6, 270.6, 270.6, 270.0, 270.0, 270.0, 270.0, 268.6, 268.0, 268.0, 267.2, 267.2, 267.2, 270.0, 277.6, 282.0, 274.1, 269.3, 267.2, 268.6, 269.3, 268.6, 267.2, 268.0, 268.6, 269.3, 268.6, 269.3, 269.3, 269.3, 268.6, 269.3, 271.3, 270.0, 270.0, 268.6, 267.2, 272.0, 272.0, 272.7, 271.3, 268.0, 266.6, 267.2, 269.3, 270.0, 268.6, 268.0, 268.6, 268.0, 268.0, 268.6, 268.0, 268.0, 268.0, 268.0, 266.6, 266.6, 266.6, 266.0, 266.0, 270.6, 278.4, 275.5, 271.3, 268.6, 268.0, 270.0, 271.3, 271.3, 270.6, 270.6, 270.6, 268.6, 268.0, 267.2, 268.0, 268.6, 268.6, 268.6, 268.6, 269.3, 270.0, 269.3, 270.6, 271.3, 272.7, 272.7, 272.7, 272.0, 271.3, 270.0, 268.6, 268.6, 268.6, 269.3, 270.6, 268.0, 268.6, 270.6, 271.3, 271.3, 271.3, 271.3, 268.0, 267.2, 267.2, 267.2, 267.2, 268.0, 268.6, 269.3, 269.3, 268.6, 268.0, 267.2, 267.2, 268.0, 268.0, 267.2, 268.0, 267.2, 266.6, 267.2, 268.0, 269.3, 268.6, 268.0, 268.0, 268.0, 267.2, 267.2, 269.3, 269.3, 269.3, 270.0, 270.6, 273.4, 272.7, 272.0, 274.1, 285.8, 281.3, 277.6, 271.3, 268.6, 268.0, 266.6, 265.3, 266.0, 267.2, 267.2, 266.6, 266.6, 266.6, 268.0, 271.3, 272.0, 272.0, 269.3, 268.0, 268.0, 268.6, 269.3, 268.6, 268.6, 268.0, 268.0, 268.0, 267.2, 266.6, 265.3, 267.2, 269.3, 269.3, 268.6, 267.2, 266.6, 266.6, 266.6, 267.2, 267.2, 266.6, 266.6, 267.2, 267.2, 267.2, 266.6, 266.0, 266.6, 266.6, 266.6, 267.2, 267.2, 268.0, 267.2, 266.6, 266.6, 268.6, 270.0, 270.0, 269.3, 269.3, 268.6, 270.0, 272.7, 273.4, 273.4, 272.7, 271.3, 270.6, 270.0, 268.6, 268.0, 268.0, 269.3, 270.0, 270.6, 270.0, 269.3, 270.0, 270.0, 270.6, 270.6, 272.0, 272.7, 273.4, 272.0, 272.0, 272.0, 270.6, 269.3, 269.3, 267.2, 268.0, 269.3, 270.0, 269.3, 270.6, 267.2, 266.6, 268.0, 268.6, 269.3, 270.6, 272.7, 272.0, 272.0, 272.7, 271.3, 271.3, 270.6, 270.6, 270.6, 270.6, 270.0, 270.6, 270.6, 270.0, 270.0, 270.0, 270.0, 271.3, 270.0, 268.0, 267.2, 268.0, 267.2, 266.6, 266.6, 266.6, 268.6, 272.7, 268.6, 268.0, 268.0, 268.6, 269.3, 277.6, 296.9, 283.5, 276.2, 269.3, 265.3, 265.3, 265.3, 266.0, 266.0, 268.6, 270.6, 269.3, 269.3, 268.0, 266.6, 266.0, 265.3, 264.6, 264.6, 264.6, 264.6, 265.3, 265.3, 265.3, 266.0, 269.3, 269.3, 269.3, 271.3, 271.3, 271.3, 272.0, 272.7, 272.7, 274.1, 272.7, 271.3, 269.3, 268.6, 268.6, 268.6, 268.0, 268.0, 268.0, 267.2, 266.6, 266.6, 266.6, 266.6, 266.6, 266.0, 265.3, 265.3, 268.0, 270.6, 272.7, 269.3, 268.6, 268.6, 268.0, 268.0, 268.0, 268.0, 267.2, 268.0, 268.0, 268.0, 268.0, 267.2, 268.0, 268.0, 268.6, 269.3, 269.3, 270.6, 270.6, 270.0, 269.3, 268.0, 267.2, 270.0, 272.7, 272.0, 272.0, 271.3, 268.0, 267.2, 270.0, 273.4, 274.1, 274.1, 274.8, 273.4, 271.3, 268.6, 268.0, 269.3, 272.7, 275.5, 273.4, 270.6, 270.0, 272.7, 268.6, 268.6, 268.0, 268.0, 270.6, 285.1, 276.9, 274.1, 273.4, 273.4, 274.1, 274.1, 271.3, 270.0, 268.6, 269.3, 271.3, 268.6, 268.0, 268.6, 268.6, 270.6, 305.3, 285.8, 282.0, 275.5, 273.4, 272.7, 271.3, 266.0, 273.4, 309.8, 306.2, 286.5, 307.1, 314.3, 317.1, 307.1, 300.2, 290.4, 268.0, 264.0, 268.0, 270.6, 269.3, 267.2, 266.6, 266.6, 266.6, 267.2, 268.0, 273.4, 306.2, 322.8, 280.6, 281.3, 278.4, 274.1, 284.3, 271.3, 268.0, 266.6, 265.3, 268.6, 267.2, 266.6, 266.0, 267.2, 268.6, 268.6, 268.0, 268.0, 267.2, 267.2, 267.2, 270.0, 271.3, 270.0, 288.1, 298.5, 296.9, 296.9, 302.8, 273.4, 265.3, 265.3, 271.3, 272.0, 271.3, 291.2, 311.5, 296.0, 281.3, 276.2, 264.6, 264.0, 266.6, 268.0, 268.6, 269.3, 268.6, 268.6, 268.0, 268.0, 268.6, 268.0, 268.0, 268.0, 268.6, 269.3, 270.0, 270.0, 269.3, 274.1, 285.1, 289.7, 291.2, 296.0, 300.2, 306.2, 288.1, 269.3, 266.6, 270.0, 266.0, 268.0, 268.0, 268.0, 268.0, 268.0, 268.0, 268.6, 268.6, 268.0, 267.2, 268.6, 268.6, 269.3, 269.3, 269.3, 268.6, 269.3, 268.6, 267.2, 266.0, 266.0, 264.0, 264.0, 264.6, 264.0, 263.3, 266.6, 268.0, 268.0, 268.0, 268.6, 268.6, 268.0, 268.0, 268.6, 269.3, 268.0, 267.2, 266.6, 270.6, 272.0, 272.0, 272.7, 275.5, 272.0, 270.0, 271.3, 274.1, 274.1, 272.0, 268.6, 266.6, 264.6, 264.6, 264.6, 265.3, 264.6, 264.6, 266.0, 266.0, 265.3, 264.0, 264.0, 264.0, 264.0, 263.3, 264.0, 265.3, 266.6, 266.0, 266.0, 266.6, 266.6, 266.0, 268.0, 270.0, 271.3, 270.6, 268.0, 268.0, 268.6, 268.6, 268.0, 267.2, 267.2, 267.2, 267.2, 268.6, 270.0, 271.3, 269.3, 267.2, 266.6, 268.0, 269.3, 270.0, 270.0, 270.0, 270.6, 270.0, 270.0, 270.0, 269.3, 268.6, 268.0, 268.0, 267.2, 267.2, 268.6, 270.6, 271.3, 270.6, 270.0, 273.4, 271.3, 268.6, 266.0, 265.3, 266.6, 268.0, 267.2, 267.2, 267.2, 267.2, 267.2, 267.2, 297.7, 302.8, 306.2, 292.8, 268.6, 262.7, 260.8, 272.0, 270.0, 269.3, 269.3, 269.3, 268.0, 268.6, 268.6, 268.6, 268.0, 267.2, 267.2, 267.2, 268.6, 270.6, 271.3, 268.6, 268.0, 269.3, 270.0, 270.6, 272.7, 270.6, 268.6, 269.3, 270.6, 271.3, 271.3, 268.6, 268.0, 268.0, 268.6, 269.3, 270.6, 274.1, 277.6, 273.4, 269.3, 269.3, 269.3, 268.6, 268.0, 269.3, 271.3, 272.7, 269.3, 268.6, 270.0, 270.0, 268.6, 269.3, 270.6, 271.3, 292.1, 294.5, 283.5, 275.5, 268.0, 266.0, 270.0, 272.7, 270.0, 268.0, 268.6, 269.3, 271.3, 272.0, 271.3, 271.3, 272.7, 271.3, 271.3, 272.0, 270.0, 269.3, 270.6, 270.0, 269.3, 269.3, 272.0, 272.7, 272.0, 272.0, 271.3, 271.3, 271.3, 270.6, 269.3, 270.6, 270.0, 270.6];
+const TS_POWER       = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 130.0, 196.0, 341.0, 425.0, 548.0, 590.0, 569.0, 552.0, 531.0, 528.0, 553.0, 561.0, 592.0, 595.0, 596.0, 598.0, 596.0, 584.0, 586.0, 584.0, 578.0, 578.0, 567.0, 512.0, 497.0, 492.0, 495.0, 496.0, 493.0, 491.0, 495.0, 501.0, 514.0, 525.0, 528.0, 529.0, 535.0, 542.0, 551.0, 557.0, 564.0, 569.0, 558.0, 543.0, 540.0, 571.0, 604.0, 578.0, 566.0, 566.0, 566.0, 571.0, 583.0, 579.0, 570.0, 567.0, 561.0, 561.0, 564.0, 558.0, 557.0, 559.0, 560.0, 564.0, 568.0, 564.0, 563.0, 567.0, 579.0, 584.0, 576.0, 577.0, 582.0, 582.0, 585.0, 589.0, 587.0, 585.0, 587.0, 586.0, 585.0, 579.0, 572.0, 567.0, 564.0, 560.0, 562.0, 563.0, 561.0, 558.0, 558.0, 556.0, 559.0, 555.0, 557.0, 570.0, 570.0, 563.0, 561.0, 564.0, 574.0, 584.0, 581.0, 575.0, 579.0, 584.0, 585.0, 582.0, 575.0, 576.0, 576.0, 576.0, 572.0, 560.0, 546.0, 518.0, 502.0, 497.0, 496.0, 498.0, 506.0, 517.0, 524.0, 532.0, 545.0, 559.0, 561.0, 568.0, 572.0, 575.0, 577.0, 580.0, 580.0, 581.0, 582.0, 586.0, 581.0, 580.0, 584.0, 590.0, 590.0, 584.0, 567.0, 533.0, 496.0, 463.0, 451.0, 454.0, 473.0, 472.0, 478.0, 491.0, 505.0, 519.0, 532.0, 544.0, 551.0, 553.0, 564.0, 579.0, 589.0, 582.0, 579.0, 579.0, 578.0, 577.0, 575.0, 579.0, 580.0, 578.0, 583.0, 588.0, 582.0, 556.0, 521.0, 489.0, 468.0, 465.0, 465.0, 471.0, 484.0, 498.0, 513.0, 529.0, 534.0, 542.0, 550.0, 558.0, 575.0, 578.0, 569.0, 570.0, 574.0, 584.0, 587.0, 586.0, 577.0, 580.0, 585.0, 579.0, 575.0, 575.0, 563.0, 496.0, 423.0, 385.0, 383.0, 383.0, 391.0, 404.0, 422.0, 442.0, 465.0, 487.0, 506.0, 526.0, 543.0, 555.0, 568.0, 575.0, 580.0, 582.0, 582.0, 579.0, 579.0, 580.0, 580.0, 582.0, 582.0, 584.0, 581.0, 581.0, 581.0, 568.0, 563.0, 559.0, 550.0, 545.0, 543.0, 542.0, 542.0, 544.0, 546.0, 555.0, 559.0, 555.0, 551.0, 555.0, 559.0, 558.0, 569.0, 565.0, 491.0, 521.0, 590.0, 592.0, 589.0, 582.0, 569.0, 573.0, 585.0, 588.0, 578.0, 560.0, 544.0, 512.0, 496.0, 489.0, 487.0, 488.0, 495.0, 509.0, 521.0, 529.0, 536.0, 545.0, 557.0, 563.0, 566.0, 571.0, 574.0, 576.0, 577.0, 584.0, 586.0, 584.0, 586.0, 585.0, 585.0, 578.0, 561.0, 551.0, 574.0, 595.0, 589.0, 574.0, 570.0, 570.0, 575.0, 571.0, 569.0, 569.0, 570.0, 569.0, 570.0, 572.0, 575.0, 573.0, 570.0, 574.0, 576.0, 580.0, 586.0, 572.0, 573.0, 572.0, 576.0, 590.0, 594.0, 586.0, 581.0, 579.0, 578.0, 571.0, 559.0, 554.0, 550.0, 547.0, 547.0, 542.0, 540.0, 542.0, 550.0, 553.0, 556.0, 564.0, 569.0, 561.0, 548.0, 556.0, 578.0, 586.0, 585.0, 577.0, 576.0, 576.0, 579.0, 579.0, 576.0, 584.0, 587.0, 587.0, 581.0, 577.0, 575.0, 573.0, 572.0, 569.0, 568.0, 568.0, 564.0, 563.0, 561.0, 562.0, 564.0, 568.0, 571.0, 577.0, 583.0, 581.0, 579.0, 578.0, 576.0, 585.0, 585.0, 578.0, 576.0, 575.0, 575.0, 574.0, 587.0, 589.0, 584.0, 583.0, 577.0, 571.0, 560.0, 554.0, 551.0, 553.0, 557.0, 561.0, 564.0, 565.0, 567.0, 574.0, 574.0, 579.0, 585.0, 582.0, 583.0, 581.0, 581.0, 584.0, 583.0, 582.0, 584.0, 584.0, 578.0, 577.0, 578.0, 577.0, 575.0, 571.0, 571.0, 572.0, 565.0, 540.0, 548.0, 566.0, 583.0, 588.0, 582.0, 584.0, 589.0, 585.0, 581.0, 582.0, 585.0, 585.0, 585.0, 582.0, 575.0, 573.0, 574.0, 585.0, 589.0, 585.0, 581.0, 580.0, 581.0, 582.0, 584.0, 583.0, 581.0, 582.0, 584.0, 588.0, 580.0, 575.0, 574.0, 577.0, 583.0, 585.0, 584.0, 582.0, 581.0, 582.0, 585.0, 585.0, 583.0, 583.0, 584.0, 587.0, 590.0, 586.0, 587.0, 586.0, 586.0, 585.0, 584.0, 585.0, 589.0, 586.0, 579.0, 575.0, 574.0, 576.0, 576.0, 577.0, 574.0, 567.0, 566.0, 567.0, 569.0, 575.0, 577.0, 578.0, 583.0, 585.0, 583.0, 579.0, 578.0, 577.0, 579.0, 582.0, 579.0, 579.0, 578.0, 578.0, 575.0, 573.0, 572.0, 574.0, 572.0, 568.0, 571.0, 575.0, 572.0, 578.0, 574.0, 568.0, 567.0, 570.0, 567.0, 579.0, 585.0, 578.0, 577.0, 577.0, 575.0, 571.0, 573.0, 574.0, 573.0, 577.0, 578.0, 578.0, 577.0, 576.0, 576.0, 578.0, 576.0, 576.0, 580.0, 580.0, 579.0, 578.0, 574.0, 577.0, 587.0, 588.0, 583.0, 584.0, 588.0, 587.0, 586.0, 582.0, 572.0, 582.0, 590.0, 584.0, 582.0, 581.0, 562.0, 524.0, 550.0, 590.0, 600.0, 606.0, 596.0, 590.0, 589.0, 588.0, 579.0, 573.0, 576.0, 577.0, 580.0, 585.0, 585.0, 586.0, 588.0, 587.0, 587.0, 587.0, 586.0, 586.0, 587.0, 586.0, 578.0, 579.0, 579.0, 574.0, 575.0, 576.0, 574.0, 573.0, 573.0, 570.0, 573.0, 580.0, 586.0, 587.0, 583.0, 581.0, 584.0, 584.0, 583.0, 586.0, 588.0, 587.0, 586.0, 586.0, 586.0, 588.0, 592.0, 591.0, 584.0, 577.0, 573.0, 583.0, 588.0, 584.0, 585.0, 585.0, 584.0, 584.0, 586.0, 584.0, 584.0, 584.0, 584.0, 581.0, 570.0, 552.0, 540.0, 533.0, 532.0, 530.0, 534.0, 541.0, 549.0, 560.0, 567.0, 563.0, 561.0, 566.0, 570.0, 574.0, 589.0, 592.0, 577.0, 568.0, 566.0, 566.0, 564.0, 568.0, 576.0, 585.0, 585.0, 577.0, 570.0, 548.0, 527.0, 489.0, 458.0, 434.0, 441.0, 450.0, 458.0, 473.0, 483.0, 471.0, 501.0, 535.0, 540.0, 547.0, 553.0, 560.0, 575.0, 585.0, 586.0, 581.0, 575.0, 583.0, 588.0, 582.0, 582.0, 577.0, 508.0, 544.0, 578.0, 579.0, 581.0, 572.0, 573.0, 590.0, 563.0, 493.0, 499.0, 560.0, 498.0, 486.0, 483.0, 506.0, 526.0, 556.0, 625.0, 624.0, 580.0, 574.0, 578.0, 588.0, 589.0, 587.0, 586.0, 585.0, 584.0, 571.0, 507.0, 480.0, 583.0, 599.0, 537.0, 477.0, 375.0, 374.0, 402.0, 385.0, 390.0, 391.0, 406.0, 427.0, 450.0, 468.0, 487.0, 508.0, 528.0, 544.0, 558.0, 569.0, 577.0, 577.0, 575.0, 578.0, 539.0, 520.0, 522.0, 524.0, 511.0, 597.0, 636.0, 600.0, 573.0, 567.0, 566.0, 520.0, 480.0, 505.0, 566.0, 569.0, 595.0, 595.0, 583.0, 569.0, 571.0, 571.0, 575.0, 578.0, 580.0, 581.0, 580.0, 582.0, 584.0, 583.0, 582.0, 579.0, 577.0, 577.0, 579.0, 566.0, 543.0, 534.0, 531.0, 511.0, 485.0, 450.0, 468.0, 520.0, 507.0, 473.0, 490.0, 499.0, 508.0, 520.0, 533.0, 544.0, 554.0, 561.0, 568.0, 576.0, 583.0, 581.0, 582.0, 580.0, 579.0, 579.0, 582.0, 580.0, 581.0, 587.0, 591.0, 589.0, 595.0, 594.0, 589.0, 591.0, 594.0, 585.0, 581.0, 582.0, 582.0, 580.0, 580.0, 583.0, 583.0, 581.0, 579.0, 584.0, 588.0, 589.0, 577.0, 574.0, 575.0, 573.0, 567.0, 575.0, 587.0, 577.0, 569.0, 569.0, 577.0, 590.0, 595.0, 594.0, 588.0, 582.0, 577.0, 575.0, 574.0, 567.0, 568.0, 572.0, 579.0, 579.0, 579.0, 583.0, 587.0, 585.0, 584.0, 582.0, 585.0, 586.0, 585.0, 585.0, 589.0, 584.0, 579.0, 575.0, 576.0, 587.0, 585.0, 579.0, 579.0, 581.0, 587.0, 584.0, 582.0, 580.0, 576.0, 573.0, 570.0, 575.0, 585.0, 585.0, 577.0, 574.0, 574.0, 574.0, 575.0, 574.0, 576.0, 578.0, 577.0, 580.0, 583.0, 585.0, 585.0, 586.0, 587.0, 582.0, 577.0, 575.0, 577.0, 580.0, 567.0, 564.0, 568.0, 564.0, 558.0, 549.0, 547.0, 550.0, 555.0, 558.0, 562.0, 566.0, 570.0, 512.0, 506.0, 502.0, 538.0, 625.0, 644.0, 644.0, 573.0, 577.0, 582.0, 578.0, 578.0, 582.0, 580.0, 579.0, 578.0, 581.0, 584.0, 567.0, 538.0, 480.0, 444.0, 426.0, 432.0, 441.0, 445.0, 460.0, 475.0, 489.0, 509.0, 535.0, 543.0, 550.0, 558.0, 565.0, 582.0, 588.0, 584.0, 581.0, 580.0, 576.0, 569.0, 560.0, 571.0, 592.0, 586.0, 580.0, 582.0, 584.0, 578.0, 573.0, 569.0, 580.0, 584.0, 575.0, 575.0, 581.0, 578.0, 574.0, 574.0, 530.0, 526.0, 558.0, 588.0, 603.0, 601.0, 578.0, 571.0, 578.0, 590.0, 584.0, 580.0, 576.0, 574.0, 576.0, 577.0, 573.0, 575.0, 577.0, 573.0, 579.0, 582.0, 574.0, 576.0, 579.0, 578.0, 571.0, 570.0, 571.0, 573.0, 574.0, 574.0, 575.0, 577.0, 582.0, 576.0, 578.0, 576.0];
+const TS_CADENCE     = [0.0, 0.0, 0.0, 0.0, 0.0, 60.0, 60.0, 60.0, 60.0, 72.0, 73.0, 74.0, 75.0, 76.0, 76.0, 77.0, 79.0, 79.0, 77.0, 78.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 76.0, 76.0, 77.0, 77.0, 76.0, 76.0, 77.0, 77.0, 76.0, 76.0, 76.0, 76.0, 76.0, 76.0, 76.0, 76.0, 78.0, 77.0, 77.0, 76.0, 76.0, 76.0, 75.0, 75.0, 78.0, 79.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 76.0, 76.0, 77.0, 77.0, 76.0, 76.0, 78.0, 77.0, 77.0, 77.0, 77.0, 76.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 78.0, 77.0, 77.0, 77.0, 76.0, 76.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 76.0, 78.0, 77.0, 77.0, 76.0, 78.0, 78.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 76.0, 77.0, 79.0, 78.0, 77.0, 77.0, 76.0, 77.0, 79.0, 78.0, 78.0, 78.0, 78.0, 77.0, 77.0, 76.0, 78.0, 78.0, 77.0, 77.0, 77.0, 76.0, 78.0, 77.0, 78.0, 78.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 79.0, 76.0, 76.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 76.0, 78.0, 78.0, 78.0, 77.0, 77.0, 76.0, 76.0, 76.0, 77.0, 78.0, 78.0, 77.0, 77.0, 78.0, 78.0, 78.0, 76.0, 78.0, 76.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 76.0, 76.0, 77.0, 77.0, 77.0, 77.0, 79.0, 77.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 78.0, 76.0, 76.0, 78.0, 76.0, 76.0, 78.0, 78.0, 78.0, 77.0, 76.0, 77.0, 77.0, 76.0, 76.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 76.0, 78.0, 78.0, 77.0, 77.0, 77.0, 76.0, 78.0, 78.0, 77.0, 78.0, 78.0, 78.0, 78.0, 77.0, 77.0, 76.0, 77.0, 78.0, 78.0, 77.0, 77.0, 78.0, 77.0, 78.0, 77.0, 76.0, 78.0, 77.0, 77.0, 78.0, 78.0, 77.0, 78.0, 78.0, 76.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 76.0, 77.0, 77.0, 79.0, 78.0, 77.0, 77.0, 76.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 77.0, 78.0, 77.0, 78.0, 78.0, 78.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 76.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 79.0, 78.0, 78.0, 78.0, 78.0, 77.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 76.0, 76.0, 76.0, 76.0, 76.0, 79.0, 77.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 76.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 76.0, 76.0, 77.0, 78.0, 78.0, 78.0, 77.0, 77.0, 76.0, 77.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 76.0, 77.0, 78.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 78.0, 77.0, 77.0, 78.0, 77.0, 76.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 76.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 78.0, 78.0, 78.0, 79.0, 79.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 78.0, 76.0, 78.0, 76.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 78.0, 78.0, 78.0, 77.0, 78.0, 78.0, 79.0, 77.0, 76.0, 77.0, 77.0, 79.0, 78.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 79.0, 78.0, 76.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 76.0, 78.0, 77.0, 76.0, 78.0, 78.0, 77.0, 77.0, 76.0, 78.0, 77.0, 76.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 76.0, 77.0, 77.0, 77.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 76.0, 77.0, 78.0, 78.0, 78.0, 78.0, 77.0, 76.0, 77.0, 77.0, 76.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 76.0, 77.0, 77.0, 78.0, 79.0, 77.0, 78.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 78.0, 78.0, 76.0, 76.0, 77.0, 76.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 79.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 76.0, 77.0, 78.0, 77.0, 77.0, 78.0, 77.0, 77.0, 76.0, 76.0, 77.0, 77.0, 78.0, 78.0, 76.0, 76.0, 78.0, 78.0, 77.0, 78.0, 78.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 78.0, 77.0, 77.0, 76.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 76.0, 78.0, 78.0, 78.0, 78.0, 77.0, 78.0, 78.0, 77.0, 77.0, 76.0, 77.0, 77.0, 76.0, 78.0, 78.0, 78.0, 78.0, 77.0, 76.0, 76.0, 76.0, 76.0, 78.0, 77.0, 77.0, 76.0, 77.0, 78.0, 77.0, 76.0, 76.0, 78.0, 78.0, 77.0, 76.0, 76.0, 77.0, 78.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 76.0, 76.0, 76.0, 76.0, 78.0, 78.0, 76.0, 77.0, 77.0, 78.0, 79.0, 78.0, 76.0, 78.0, 77.0, 76.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 79.0, 79.0, 78.0, 78.0, 79.0, 79.0, 79.0, 79.0, 79.0, 79.0, 78.0, 78.0, 78.0, 78.0, 80.0, 80.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 76.0, 76.0, 77.0, 77.0, 77.0, 78.0, 79.0, 79.0, 79.0, 79.0, 78.0, 79.0, 79.0, 77.0, 77.0, 77.0, 77.0, 79.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 78.0, 78.0, 79.0, 79.0, 79.0, 79.0, 79.0, 79.0, 79.0, 77.0, 77.0, 77.0, 77.0, 76.0, 76.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 79.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 79.0, 76.0, 76.0, 78.0, 78.0, 79.0, 79.0, 79.0, 79.0, 79.0, 79.0, 79.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 76.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 79.0, 79.0, 79.0, 77.0, 77.0, 77.0, 78.0, 78.0, 78.0, 77.0, 78.0, 79.0, 77.0, 77.0, 77.0, 78.0, 77.0, 76.0, 78.0, 78.0, 76.0, 76.0, 78.0, 78.0, 77.0, 77.0, 76.0, 77.0, 77.0, 76.0, 76.0, 77.0, 77.0, 77.0, 77.0, 78.0, 79.0, 78.0, 77.0, 78.0, 78.0, 78.0, 77.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 78.0, 79.0, 78.0, 76.0, 76.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 78.0, 77.0, 76.0, 76.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 78.0, 79.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 79.0, 79.0, 79.0, 79.0, 79.0, 79.0, 80.0, 77.0, 77.0, 77.0, 78.0, 77.0, 76.0, 78.0, 77.0, 77.0, 77.0, 77.0, 79.0, 77.0, 77.0, 78.0, 77.0, 77.0, 78.0, 79.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 78.0, 77.0, 78.0, 77.0, 77.0, 78.0, 78.0, 78.0, 78.0, 77.0, 78.0, 78.0, 77.0, 80.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 77.0, 79.0, 79.0, 77.0, 78.0, 78.0, 77.0, 77.0, 77.0, 77.0, 76.0, 76.0, 79.0, 78.0, 78.0, 78.0, 76.0, 77.0, 79.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 77.0, 78.0, 77.0, 77.0, 77.0, 77.0, 76.0, 76.0, 76.0, 77.0, 77.0, 76.0, 77.0, 78.0, 77.0, 77.0, 77.0, 78.0, 78.0, 78.0];
+const TS_ALTITUDE    = [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null];
+const TS_DISTANCE    = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.7, 2.3, 4.4, 7.1, 13.2, 20.2, 27.2, 34.2, 41.1, 47.9, 54.9, 61.9, 69.2, 72.9, 76.6, 84.1, 91.6, 99.1, 106.6, 114.0, 121.4, 128.8, 136.2, 143.6, 151.0, 158.3, 165.7, 173.1, 180.5, 187.8, 195.1, 202.4, 209.7, 217.1, 224.5, 231.9, 239.2, 246.6, 253.9, 261.3, 268.7, 276.1, 283.3, 290.4, 297.4, 304.5, 312.0, 319.3, 326.7, 334.0, 341.3, 348.6, 356.0, 363.5, 370.9, 378.3, 385.7, 393.1, 400.6, 408.0, 415.4, 422.8, 430.2, 437.5, 444.9, 452.3, 459.6, 466.9, 474.3, 481.7, 489.1, 496.5, 503.9, 511.3, 518.8, 526.3, 533.8, 541.3, 548.8, 556.3, 563.8, 571.3, 578.7, 586.1, 593.5, 600.9, 608.3, 615.7, 623.1, 630.5, 637.8, 645.2, 652.5, 659.8, 667.1, 674.5, 681.8, 689.2, 696.4, 703.7, 711.1, 718.5, 725.9, 733.3, 740.7, 748.2, 755.6, 763.1, 770.5, 777.8, 785.2, 792.6, 800.0, 807.4, 814.9, 822.4, 829.9, 837.5, 845.0, 852.5, 860.0, 867.5, 875.0, 882.4, 889.9, 897.3, 904.8, 912.2, 919.7, 927.2, 934.6, 942.1, 949.5, 957.0, 964.4, 971.9, 979.3, 986.8, 994.2, 1001.7, 1009.2, 1016.7, 1024.1, 1031.4, 1038.7, 1045.9, 1053.2, 1060.6, 1068.1, 1075.6, 1083.0, 1090.5, 1097.9, 1105.4, 1112.8, 1120.2, 1127.7, 1135.0, 1142.3, 1149.7, 1157.2, 1164.6, 1172.0, 1179.4, 1186.8, 1194.2, 1201.6, 1209.0, 1216.4, 1223.8, 1231.2, 1238.7, 1246.2, 1253.8, 1261.3, 1268.8, 1276.2, 1283.7, 1291.2, 1298.6, 1306.0, 1313.5, 1321.0, 1328.4, 1335.8, 1343.2, 1350.6, 1357.9, 1365.4, 1372.8, 1380.1, 1387.4, 1394.7, 1402.1, 1409.5, 1417.0, 1424.4, 1431.8, 1439.3, 1446.7, 1454.1, 1461.4, 1468.8, 1476.3, 1483.8, 1491.3, 1498.8, 1506.3, 1513.8, 1521.3, 1528.8, 1536.3, 1543.8, 1551.3, 1558.8, 1566.2, 1573.7, 1581.2, 1588.7, 1596.2, 1603.6, 1611.1, 1618.5, 1625.9, 1633.3, 1640.8, 1648.2, 1655.6, 1663.1, 1670.5, 1678.0, 1685.4, 1692.9, 1700.3, 1707.7, 1715.1, 1722.4, 1729.8, 1737.1, 1744.4, 1751.7, 1759.0, 1766.4, 1773.8, 1781.2, 1788.6, 1795.9, 1803.2, 1810.5, 1817.8, 1825.1, 1832.4, 1838.9, 1845.5, 1852.6, 1859.8, 1867.2, 1874.5, 1881.8, 1889.2, 1896.5, 1904.0, 1911.4, 1918.9, 1926.4, 1933.9, 1941.3, 1948.8, 1956.2, 1963.7, 1971.0, 1978.4, 1985.8, 1993.2, 2000.6, 2007.9, 2015.3, 2022.7, 2030.1, 2037.5, 2044.9, 2052.4, 2059.8, 2067.2, 2074.7, 2082.1, 2089.6, 2097.1, 2104.6, 2112.0, 2119.3, 2126.4, 2133.7, 2141.1, 2148.5, 2156.0, 2163.4, 2170.9, 2178.4, 2185.8, 2193.3, 2200.7, 2208.2, 2215.6, 2223.0, 2230.4, 2237.9, 2245.3, 2252.7, 2260.1, 2267.5, 2274.9, 2282.4, 2289.8, 2297.1, 2304.5, 2311.9, 2319.3, 2326.8, 2334.3, 2341.7, 2349.1, 2356.6, 2364.0, 2371.5, 2378.9, 2386.4, 2393.8, 2401.3, 2408.8, 2416.2, 2423.7, 2431.2, 2438.7, 2446.2, 2453.7, 2461.2, 2468.6, 2475.9, 2483.1, 2490.4, 2497.9, 2505.3, 2512.8, 2520.1, 2527.5, 2534.9, 2542.3, 2549.7, 2557.1, 2564.6, 2572.1, 2579.5, 2587.0, 2594.4, 2601.9, 2609.3, 2616.8, 2624.2, 2631.6, 2639.0, 2646.4, 2653.7, 2661.0, 2668.4, 2675.7, 2679.4, 2683.1, 2690.6, 2698.0, 2705.4, 2712.9, 2720.3, 2727.7, 2735.2, 2742.6, 2750.0, 2757.3, 2764.7, 2772.1, 2779.5, 2787.0, 2794.5, 2801.9, 2809.4, 2816.9, 2824.4, 2831.8, 2839.2, 2846.7, 2854.1, 2861.6, 2869.1, 2876.5, 2884.0, 2891.5, 2899.0, 2906.4, 2913.9, 2921.4, 2928.9, 2936.3, 2943.8, 2951.2, 2958.7, 2966.1, 2973.6, 2981.1, 2988.6, 2996.0, 3003.4, 3010.8, 3018.2, 3025.6, 3032.9, 3040.2, 3047.6, 3054.6, 3061.7, 3068.9, 3076.2, 3083.7, 3091.1, 3098.6, 3106.1, 3113.6, 3121.1, 3128.6, 3136.1, 3143.6, 3151.1, 3158.6, 3166.0, 3173.4, 3180.7, 3188.1, 3195.6, 3203.1, 3210.5, 3217.9, 3225.4, 3232.8, 3240.3, 3247.8, 3255.2, 3262.7, 3270.2, 3277.7, 3285.2, 3292.6, 3300.1, 3307.5, 3315.0, 3322.5, 3330.0, 3337.5, 3345.0, 3352.4, 3359.9, 3367.4, 3374.9, 3382.4, 3389.9, 3397.4, 3404.9, 3412.4, 3419.9, 3427.4, 3434.9, 3442.4, 3449.8, 3457.3, 3464.8, 3472.3, 3479.8, 3487.2, 3494.6, 3502.0, 3509.4, 3516.9, 3524.3, 3531.7, 3539.0, 3546.3, 3553.6, 3561.0, 3568.4, 3575.8, 3583.2, 3590.7, 3598.1, 3605.6, 3613.0, 3620.4, 3627.8, 3635.2, 3642.6, 3650.0, 3657.4, 3664.8, 3672.2, 3679.5, 3686.8, 3694.2, 3701.5, 3708.9, 3716.3, 3723.7, 3731.1, 3738.6, 3746.0, 3753.5, 3760.9, 3768.3, 3775.7, 3783.2, 3790.7, 3798.1, 3805.6, 3813.0, 3820.4, 3827.8, 3835.1, 3842.5, 3849.8, 3857.2, 3864.6, 3871.9, 3879.3, 3886.7, 3894.1, 3901.5, 3908.9, 3916.3, 3923.7, 3931.1, 3938.5, 3945.9, 3953.3, 3960.7, 3968.1, 3975.6, 3983.1, 3990.6, 3998.1, 4005.6, 4013.1, 4020.5, 4027.9, 4035.3, 4042.8, 4050.3, 4057.7, 4065.1, 4072.4, 4079.2, 4086.1, 4093.3, 4100.7, 4108.2, 4115.8, 4123.3, 4130.9, 4138.4, 4145.8, 4153.2, 4160.7, 4168.1, 4175.5, 4183.0, 4190.5, 4198.1, 4205.6, 4213.2, 4220.8, 4228.3, 4235.9, 4243.4, 4250.9, 4258.5, 4265.9, 4273.3, 4280.8, 4288.1, 4295.5, 4302.9, 4310.2, 4317.6, 4324.9, 4332.2, 4339.6, 4346.9, 4354.3, 4361.8, 4369.2, 4376.7, 4384.1, 4391.6, 4399.1, 4406.5, 4414.0, 4421.5, 4429.0, 4436.5, 4444.0, 4451.6, 4459.1, 4466.6, 4474.1, 4481.5, 4488.9, 4496.3, 4503.7, 4511.1, 4518.6, 4526.1, 4533.5, 4541.0, 4548.5, 4556.0, 4563.4, 4570.9, 4578.4, 4585.8, 4593.3, 4600.8, 4608.2, 4615.6, 4623.1, 4630.5, 4637.9, 4645.3, 4652.7, 4660.1, 4667.6, 4675.0, 4682.4, 4689.8, 4697.1, 4704.5, 4711.9, 4719.4, 4726.8, 4734.1, 4741.5, 4748.8, 4756.0, 4763.3, 4770.7, 4778.1, 4785.6, 4793.0, 4800.4, 4807.7, 4815.0, 4822.3, 4829.8, 4837.1, 4844.5, 4852.0, 4859.4, 4866.9, 4874.3, 4881.4, 4888.6, 4895.9, 4903.2, 4910.5, 4917.8, 4925.1, 4932.5, 4939.9, 4947.3, 4954.8, 4962.1, 4969.6, 4977.0, 4984.5, 4991.9, 4999.3, 5006.0, 5012.9, 5020.0, 5027.2, 5034.5, 5041.8, 5049.2, 5056.7, 5064.1, 5070.8, 5077.2, 5084.1, 5090.7, 5097.1, 5103.4, 5109.8, 5113.1, 5116.6, 5123.9, 5131.4, 5139.0, 5146.4, 5153.8, 5161.2, 5168.7, 5176.2, 5183.7, 5191.2, 5198.7, 5206.1, 5212.7, 5219.0, 5226.0, 5233.1, 5240.2, 5247.5, 5254.6, 5261.9, 5269.3, 5276.8, 5284.4, 5291.8, 5299.3, 5306.8, 5314.3, 5321.8, 5329.2, 5336.7, 5344.2, 5351.6, 5359.1, 5366.6, 5374.1, 5381.5, 5388.9, 5396.3, 5403.4, 5410.1, 5416.9, 5423.6, 5430.2, 5437.3, 5444.9, 5452.4, 5459.8, 5467.2, 5474.5, 5481.6, 5488.2, 5494.7, 5501.8, 5509.0, 5516.5, 5520.3, 5524.0, 5531.5, 5539.0, 5546.4, 5553.8, 5561.3, 5568.8, 5576.2, 5583.7, 5591.1, 5598.6, 5606.0, 5613.5, 5620.9, 5628.4, 5635.8, 5643.2, 5650.5, 5657.7, 5664.6, 5671.5, 5678.2, 5684.9, 5691.5, 5698.2, 5705.5, 5713.0, 5720.4, 5728.0, 5735.4, 5742.9, 5750.4, 5757.8, 5765.3, 5772.8, 5780.2, 5787.7, 5795.1, 5802.6, 5810.0, 5817.5, 5824.9, 5832.3, 5839.8, 5847.2, 5854.6, 5862.1, 5869.5, 5877.0, 5884.6, 5892.1, 5899.7, 5907.3, 5914.8, 5922.4, 5930.0, 5937.4, 5944.9, 5952.4, 5959.8, 5967.3, 5974.7, 5982.2, 5989.6, 5997.0, 6004.5, 6012.0, 6019.5, 6026.9, 6034.3, 6041.6, 6048.9, 6056.2, 6063.5, 6071.0, 6078.4, 6085.7, 6093.0, 6100.3, 6107.7, 6115.2, 6122.7, 6130.3, 6137.9, 6145.4, 6153.0, 6160.5, 6168.1, 6175.6, 6183.1, 6190.7, 6198.2, 6205.8, 6213.4, 6217.2, 6221.0, 6228.5, 6236.0, 6243.6, 6251.1, 6258.6, 6266.1, 6273.6, 6281.1, 6288.5, 6295.9, 6303.2, 6310.7, 6318.1, 6325.6, 6333.0, 6340.5, 6348.0, 6355.5, 6363.0, 6370.4, 6377.9, 6385.3, 6392.7, 6400.1, 6407.6, 6415.1, 6422.6, 6430.0, 6437.4, 6444.8, 6452.2, 6459.6, 6467.0, 6474.4, 6481.9, 6489.3, 6496.7, 6504.2, 6511.6, 6519.1, 6526.6, 6534.1, 6541.5, 6548.8, 6556.2, 6563.6, 6571.0, 6578.3, 6585.8, 6593.3, 6600.8, 6608.3, 6615.8, 6623.2, 6630.7, 6638.2, 6645.7, 6653.2, 6660.7, 6667.5, 6674.1, 6680.7, 6687.4, 6694.6, 6698.5, 6702.3, 6709.7, 6717.1, 6724.5, 6731.9, 6739.4, 6746.8, 6754.3, 6761.7, 6769.1, 6776.6, 6784.1, 6791.6, 6799.0, 6806.5, 6813.9, 6821.3, 6828.7, 6836.2, 6843.6, 6851.0, 6858.4, 6865.8, 6873.1, 6880.6, 6888.0, 6895.4, 6902.8, 6910.2, 6917.6, 6925.1, 6932.5, 6940.0, 6947.4, 6954.8, 6962.1, 6969.4, 6976.6, 6984.0, 6991.5, 6998.9, 7006.4, 7013.8, 7021.2, 7028.6, 7036.0, 7043.4, 7050.8, 7058.2, 7065.6, 7073.1, 7080.5, 7087.9, 7095.3, 7102.4, 7109.1, 7116.0, 7123.2, 7130.6, 7138.2, 7145.6, 7153.0, 7160.3, 7167.8, 7175.2, 7182.7, 7190.1, 7197.4, 7204.8, 7212.2, 7219.5, 7226.9, 7234.2, 7241.6, 7249.0, 7256.4, 7263.8, 7271.2, 7278.6, 7286.0, 7293.4, 7300.8, 7308.1, 7315.5, 7322.8, 7330.2, 7333.9, 7337.6, 7345.0, 7352.4, 7359.8, 7367.2];
+const TS_STAMINA     = [9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9700.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9600.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9500.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9400.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9300.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9200.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9100.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 9000.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0, 8900.0];
+const TS_TEMPERATURE = [null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null, null];
+const TS_GCT         = [null, null, null, null, null, null, null, null, null, 339, 328, 306, 296, 286, 291, 285, 281, 279, 286, 278, 278, 278, 280, 280, 281, 281, 281, 286, 282, 282, 282, 282, 282, 282, 282, 286, 287, 287, 287, 287, 286, 286, 278, 282, 282, 282, 282, 286, 291, 293, 282, 279, 280, 277, 278, 279, 279, 279, 278, 277, 281, 282, 282, 282, 286, 285, 277, 282, 282, 282, 282, 282, 278, 279, 283, 282, 281, 282, 282, 281, 277, 277, 276, 276, 280, 280, 280, 280, 286, 282, 282, 282, 282, 282, 282, 282, 282, 278, 278, 282, 283, 279, 282, 282, 287, 279, 279, 282, 281, 277, 282, 281, 281, 281, 277, 274, 278, 282, 282, 282, 277, 272, 276, 276, 276, 276, 280, 280, 280, 277, 277, 281, 281, 281, 281, 277, 277, 277, 277, 277, 281, 281, 281, 277, 277, 277, 276, 276, 276, 278, 279, 279, 275, 275, 282, 280, 281, 276, 277, 277, 277, 281, 281, 278, 279, 278, 282, 281, 281, 286, 282, 277, 278, 278, 277, 277, 277, 277, 276, 280, 276, 280, 276, 281, 281, 281, 281, 281, 281, 281, 281, 277, 278, 278, 278, 281, 286, 279, 279, 278, 277, 273, 281, 278, 281, 281, 282, 278, 278, 281, 277, 277, 280, 276, 276, 276, 280, 280, 276, 281, 281, 277, 276, 276, 281, 285, 281, 281, 286, 281, 277, 277, 281, 281, 281, 281, 281, 281, 281, 277, 278, 282, 282, 282, 283, 279, 279, 283, 278, 278, 277, 277, 282, 283, 287, 283, 279, 278, 283, 290, 286, 281, 279, 282, 282, 279, 278, 277, 277, 277, 281, 276, 277, 281, 281, 277, 282, 282, 282, 282, 282, 282, 278, 274, 278, 282, 282, 282, 282, 277, 277, 277, 277, 276, 276, 281, 277, 280, 277, 279, 277, 276, 277, 277, 277, 276, 277, 277, 281, 277, 277, 277, 281, 277, 277, 278, 277, 277, 277, 276, 278, 278, 278, 278, 281, 280, 276, 277, 277, 281, 281, 281, 277, 273, 277, 277, 277, 277, 281, 280, 276, 276, 280, 280, 278, 280, 279, 282, 281, 281, 286, 286, 282, 282, 282, 274, 277, 277, 276, 277, 281, 281, 281, 281, 277, 277, 281, 278, 278, 282, 278, 278, 282, 282, 282, 281, 281, 277, 277, 278, 281, 281, 282, 282, 278, 278, 278, 281, 281, 281, 281, 276, 277, 281, 281, 281, 277, 277, 276, 276, 277, 273, 276, 277, 281, 280, 276, 281, 286, 277, 277, 281, 281, 281, 281, 281, 277, 281, 282, 282, 279, 278, 274, 279, 283, 277, 276, 274, 273, 273, 280, 280, 280, 276, 281, 280, 276, 280, 277, 282, 278, 278, 281, 277, 273, 273, 273, 273, 277, 277, 273, 273, 272, 276, 280, 281, 281, 273, 277, 276, 276, 280, 276, 276, 276, 276, 276, 276, 272, 276, 280, 280, 276, 280, 276, 281, 276, 277, 276, 280, 276, 281, 282, 277, 277, 281, 281, 286, 278, 279, 283, 278, 278, 282, 282, 281, 281, 281, 281, 282, 282, 282, 281, 282, 282, 282, 282, 282, 282, 283, 282, 278, 278, 278, 277, 277, 276, 277, 277, 282, 281, 278, 276, 276, 277, 277, 281, 282, 282, 282, 278, 282, 282, 282, 282, 278, 278, 282, 282, 282, 282, 282, 282, 282, 277, 274, 273, 277, 276, 277, 276, 280, 280, 276, 281, 278, 277, 277, 277, 281, 281, 284, 295, 282, 279, 281, 280, 280, 280, 280, 280, 277, 274, 277, 277, 277, 276, 276, 276, 275, 275, 275, 275, 276, 276, 280, 280, 273, 277, 277, 274, 278, 282, 282, 282, 278, 279, 278, 278, 281, 281, 277, 273, 277, 273, 273, 276, 276, 276, 276, 272, 272, 272, 276, 280, 281, 278, 282, 281, 281, 281, 281, 281, 277, 277, 276, 277, 281, 277, 277, 281, 281, 281, 281, 281, 281, 278, 278, 277, 277, 281, 281, 286, 287, 287, 278, 282, 281, 285, 277, 279, 283, 287, 283, 279, 278, 281, 281, 286, 282, 279, 283, 282, 277, 282, 281, 281, 281, 281, 286, 287, 280, 279, 283, 283, 279, 279, 274, 277, 281, 277, 278, 281, 281, 281, 281, 282, 293, 279, 277, 275, 275, 274, 274, 272, 275, 286, 285, 279, 289, 287, 287, 285, 279, 276, 277, 275, 281, 282, 281, 281, 280, 280, 280, 285, 285, 279, 293, 293, 277, 277, 276, 275, 278, 274, 273, 276, 280, 277, 276, 272, 276, 281, 281, 281, 277, 277, 276, 276, 276, 277, 274, 273, 279, 282, 282, 282, 284, 275, 276, 276, 282, 282, 282, 288, 286, 282, 281, 279, 275, 271, 272, 277, 281, 277, 277, 277, 277, 277, 277, 277, 277, 277, 277, 273, 273, 282, 281, 279, 278, 280, 280, 282, 279, 281, 279, 273, 276, 277, 276, 281, 281, 281, 281, 281, 281, 281, 277, 277, 276, 277, 277, 273, 273, 273, 277, 277, 277, 276, 272, 272, 275, 271, 271, 275, 275, 276, 277, 281, 281, 277, 273, 281, 281, 277, 277, 281, 281, 280, 282, 282, 282, 282, 283, 278, 277, 278, 275, 275, 274, 277, 276, 271, 275, 275, 272, 271, 275, 272, 272, 276, 275, 271, 271, 275, 279, 279, 280, 276, 276, 276, 276, 276, 276, 281, 282, 278, 282, 281, 281, 277, 277, 277, 281, 276, 276, 276, 277, 277, 278, 277, 276, 276, 277, 277, 282, 277, 277, 278, 282, 286, 277, 277, 277, 277, 281, 276, 281, 277, 278, 278, 282, 277, 275, 274, 277, 272, 276, 280, 277, 276, 276, 276, 272, 272, 272, 282, 284, 285, 277, 277, 275, 274, 278, 277, 281, 277, 281, 281, 281, 281, 273, 277, 276, 276, 276, 277, 278, 274, 281, 281, 277, 277, 278, 278, 278, 277, 277, 282, 278, 274, 277, 273, 277, 277, 277, 274, 279, 272, 279, 281, 281, 281, 277, 277, 277, 278, 274, 281, 277, 277, 282, 281, 281, 282, 286, 289, 281, 282, 279, 277, 280, 277, 271, 277, 277, 277, 277, 278, 278, 282, 282, 282, 278, 278, 278, 282, 281, 282, 282, 286, 286, 282, 282, 282, 287, 278, 278, 282, 282, 281, 278, 277, 278];
+const TS_VO          = [null, null, null, null, null, null, null, 5.3, 6.0, 8.1, 9.0, 10.0, 10.2, 10.0, 10.1, 9.8, 9.6, 9.7, 10.0, 10.1, 10.1, 10.1, 10.4, 10.4, 10.3, 10.3, 10.3, 10.4, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.4, 10.4, 10.4, 10.4, 10.4, 10.4, 10.4, 10.1, 10.3, 10.3, 10.3, 10.3, 10.4, 10.5, 10.4, 9.9, 9.7, 10.0, 10.2, 10.1, 10.1, 10.1, 10.1, 10.1, 10.2, 10.3, 10.3, 10.3, 10.3, 10.4, 10.5, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.1, 10.1, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.2, 10.4, 10.4, 10.4, 10.4, 10.4, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.1, 10.1, 10.3, 10.2, 10.1, 10.3, 10.3, 10.4, 10.1, 10.1, 10.3, 10.3, 10.2, 10.3, 10.3, 10.3, 10.3, 10.2, 10.0, 10.1, 10.3, 10.3, 10.3, 10.2, 10.1, 10.2, 10.2, 10.2, 10.2, 10.4, 10.4, 10.4, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.2, 10.2, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.1, 10.1, 10.1, 9.9, 10.0, 10.3, 10.4, 10.3, 10.2, 10.2, 10.2, 10.2, 10.3, 10.3, 10.1, 10.1, 10.1, 10.3, 10.3, 10.3, 10.4, 10.3, 10.2, 10.1, 10.1, 10.2, 10.2, 10.2, 10.2, 10.2, 10.4, 10.2, 10.4, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.1, 10.1, 10.1, 10.3, 10.4, 10.1, 10.1, 10.1, 10.2, 10.0, 10.3, 10.1, 10.3, 10.3, 10.3, 10.1, 10.1, 10.3, 10.2, 10.2, 10.4, 10.2, 10.2, 10.2, 10.4, 10.4, 10.2, 10.3, 10.3, 10.2, 10.2, 10.2, 10.3, 10.5, 10.3, 10.3, 10.4, 10.3, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.1, 10.3, 10.3, 10.3, 10.2, 10.1, 10.1, 10.2, 10.1, 10.1, 10.2, 10.2, 10.3, 10.2, 10.4, 10.2, 10.1, 10.1, 10.2, 9.5, 9.7, 10.0, 10.1, 10.3, 10.3, 10.1, 10.1, 10.2, 10.2, 10.2, 10.3, 10.2, 10.2, 10.3, 10.3, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.1, 10.0, 10.1, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.3, 10.2, 10.0, 9.8, 10.1, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.3, 10.2, 10.2, 10.2, 10.3, 10.2, 10.2, 10.1, 10.2, 10.2, 10.2, 10.2, 10.1, 10.1, 10.1, 10.1, 10.3, 10.4, 10.2, 10.2, 10.2, 10.3, 10.3, 10.3, 10.2, 10.1, 10.2, 10.2, 10.2, 10.2, 10.3, 10.4, 10.2, 10.2, 10.4, 10.4, 10.1, 10.0, 10.1, 10.3, 10.3, 10.3, 10.4, 10.4, 10.3, 10.3, 10.3, 10.0, 10.2, 10.2, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.3, 10.1, 10.1, 10.3, 10.1, 10.1, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.1, 10.3, 10.3, 10.3, 10.3, 10.1, 10.1, 10.1, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.2, 10.2, 10.1, 10.2, 10.2, 10.3, 10.4, 10.2, 10.3, 10.4, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.3, 10.3, 10.3, 10.1, 10.1, 10.0, 10.1, 9.9, 9.8, 9.9, 10.0, 10.0, 10.1, 10.4, 10.4, 10.4, 10.2, 10.3, 10.4, 10.2, 10.4, 10.2, 10.3, 10.1, 10.1, 10.3, 10.2, 10.1, 10.0, 10.0, 10.0, 10.2, 10.2, 10.1, 10.1, 10.1, 10.2, 10.4, 10.3, 10.3, 10.0, 10.2, 10.2, 10.2, 10.4, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.1, 10.2, 10.4, 10.4, 10.2, 10.4, 10.2, 10.3, 10.2, 10.2, 10.2, 10.4, 10.2, 10.3, 10.3, 10.2, 10.2, 10.3, 10.3, 10.4, 10.1, 10.1, 10.2, 10.1, 10.1, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.3, 10.1, 10.1, 10.1, 10.2, 10.2, 10.2, 10.2, 10.2, 10.3, 10.3, 10.1, 10.2, 10.2, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.1, 10.3, 10.3, 10.3, 10.3, 10.1, 10.1, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.0, 10.0, 10.2, 10.2, 10.2, 10.2, 10.4, 10.4, 10.2, 10.3, 10.1, 10.2, 10.2, 10.2, 10.3, 10.3, 10.2, 9.9, 9.9, 10.1, 10.3, 10.4, 10.4, 10.4, 10.4, 10.4, 10.2, 10.0, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.4, 10.4, 10.0, 10.2, 10.2, 10.0, 10.1, 10.3, 10.3, 10.3, 10.1, 10.1, 10.1, 10.1, 10.3, 10.3, 10.2, 10.0, 10.2, 10.1, 10.1, 10.2, 10.2, 10.2, 10.2, 10.1, 10.1, 10.1, 10.2, 10.4, 10.3, 10.1, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.2, 10.3, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.1, 10.1, 10.2, 10.2, 10.3, 10.3, 10.4, 10.4, 10.4, 10.1, 10.3, 10.3, 10.5, 10.2, 10.1, 10.2, 10.4, 10.2, 10.1, 10.1, 10.3, 10.3, 10.4, 10.3, 10.1, 10.2, 10.3, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.4, 10.0, 10.0, 10.1, 10.2, 10.2, 10.1, 10.1, 10.0, 10.2, 10.3, 10.2, 10.1, 10.3, 10.3, 10.3, 10.3, 10.3, 9.7, 9.7, 9.8, 9.9, 10.0, 10.0, 10.0, 10.1, 10.0, 9.4, 9.4, 9.7, 9.5, 9.3, 9.3, 9.4, 9.4, 9.6, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.4, 10.4, 10.4, 10.5, 10.5, 10.1, 9.7, 9.3, 9.8, 9.8, 9.9, 10.0, 9.8, 10.0, 10.1, 10.2, 10.4, 10.2, 10.2, 10.1, 10.2, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.0, 10.0, 9.7, 9.6, 9.6, 9.6, 9.5, 10.0, 10.2, 10.2, 10.3, 10.3, 10.3, 9.9, 9.4, 9.6, 10.0, 10.1, 10.3, 10.1, 10.1, 10.2, 10.3, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.0, 10.0, 10.3, 10.3, 10.1, 9.8, 9.7, 9.7, 9.6, 9.4, 9.3, 9.7, 10.0, 10.2, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.2, 10.2, 10.0, 10.0, 10.0, 10.2, 10.2, 10.2, 10.2, 10.1, 10.1, 10.3, 10.1, 10.1, 10.3, 10.3, 10.2, 10.2, 10.3, 10.3, 10.2, 10.0, 10.3, 10.3, 10.2, 10.2, 10.3, 10.3, 10.4, 10.3, 10.3, 10.3, 10.3, 10.2, 10.1, 10.2, 10.1, 10.0, 10.0, 10.0, 10.2, 10.2, 10.1, 10.3, 10.3, 10.1, 10.1, 10.3, 10.1, 10.1, 10.2, 10.3, 10.1, 10.1, 10.3, 10.4, 10.4, 10.4, 10.2, 10.2, 10.2, 10.2, 10.2, 10.2, 10.3, 10.3, 10.1, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.3, 10.2, 10.2, 10.2, 10.2, 10.2, 10.1, 10.2, 10.2, 10.2, 10.2, 10.2, 10.3, 10.2, 10.2, 10.1, 10.3, 10.4, 10.2, 10.2, 10.2, 10.2, 10.3, 10.2, 10.3, 10.2, 10.1, 10.1, 10.3, 10.2, 10.0, 10.0, 10.2, 10.1, 10.2, 10.4, 10.2, 10.2, 10.2, 10.2, 10.1, 10.1, 10.1, 9.6, 9.5, 9.4, 9.5, 10.2, 10.3, 10.3, 10.1, 10.2, 10.3, 10.2, 10.3, 10.3, 10.3, 10.3, 10.0, 10.2, 10.2, 10.2, 10.2, 10.2, 10.1, 10.0, 10.3, 10.3, 10.2, 10.2, 10.1, 10.1, 10.1, 10.2, 10.2, 10.3, 10.1, 10.0, 10.2, 10.1, 10.2, 10.2, 10.2, 10.0, 10.1, 9.8, 10.1, 10.3, 10.3, 10.3, 10.2, 10.2, 10.2, 10.1, 10.0, 10.3, 10.2, 10.2, 10.3, 10.3, 10.3, 10.3, 10.4, 9.9, 9.6, 9.9, 10.1, 10.2, 10.4, 10.2, 9.8, 10.2, 10.2, 10.2, 10.2, 10.1, 10.1, 10.3, 10.3, 10.3, 10.1, 10.1, 10.1, 10.3, 10.3, 10.3, 10.3, 10.4, 10.4, 10.3, 10.3, 10.3, 10.4, 10.1, 10.1, 10.3, 10.3, 10.3, 10.1, 10.2, 10.1];
+const HAS_POWER   = true;
+const HAS_STAMINA = TS_STAMINA && TS_STAMINA.some(v => v !== null);
+const HAS_TEMP    = TS_TEMPERATURE && TS_TEMPERATURE.some(v => v !== null);
+const HAS_GCT     = TS_GCT && TS_GCT.some(v => v !== null);
+const HAS_VO      = TS_VO && TS_VO.some(v => v !== null);
+
+function thin(arr, max=400) {
+  if (!arr || arr.length <= max) return arr;
+  const step = Math.ceil(arr.length / max);
+  return arr.filter((_, i) => i % step === 0);
+}
+function makeLabels() {
+  const d = thin(TS_DISTANCE);
+  if (d && d.some(v => v)) return d.map(v => v ? (v/1000).toFixed(2)+'km' : '');
+  const t = thin(TS_TIME);
+  if (t && t.some(v => v)) return t.map(v => {
+    if (!v) return '';
+    const s = Math.round(v); return `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
+  });
+  return [];
+}
+const LABELS = makeLabels();
+const base = {
+  responsive: true, maintainAspectRatio: false, animation: false,
+  plugins: { legend: { display: false } },
+  scales: { x: { grid: { color: '#1e293b' }, ticks: { maxTicksLimit: 8, color: '#64748b' } },
+             y: { grid: { color: '#1e293b' }, ticks: { color: '#64748b' } } },
+  elements: { point: { radius: 0 }, line: { borderWidth: 2 } }
+};
+
+new Chart(document.getElementById('chartHR'), { type: 'line', data: { labels: LABELS, datasets: [{
+  data: thin(TS_HR), borderColor: '#ef4444', backgroundColor: '#ef444422', fill: true, tension: 0.2
+}]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'bpm', color: '#64748b' } } } }});
+
+const cleanPace = thin(TS_PACE).map(v => (v && v < 900) ? parseFloat((v/60).toFixed(2)) : null);
+new Chart(document.getElementById('chartPace'), { type: 'line', data: { labels: LABELS, datasets: [{
+  data: cleanPace, borderColor: '#00d4ff', backgroundColor: '#00d4ff22', fill: true, tension: 0.2, spanGaps: true
+}]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, reverse: true,
+  ticks: { color: '#64748b', callback: v => `${Math.floor(v)}:${String(Math.round((v%1)*60)).padStart(2,'0')}` }
+}}}});
+
+new Chart(document.getElementById('chartCadence'), { type: 'line', data: { labels: LABELS, datasets: [{
+  data: thin(TS_CADENCE), borderColor: '#7c3aed', backgroundColor: '#7c3aed22', fill: true, tension: 0.2, spanGaps: true
+}]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'ppm', color: '#64748b' } } } }});
+
+new Chart(document.getElementById('chartAltitude'), { type: 'line', data: { labels: LABELS, datasets: [{
+  data: thin(TS_ALTITUDE), borderColor: '#22c55e', backgroundColor: '#22c55e22', fill: true, tension: 0.3, spanGaps: true
+}]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'm', color: '#64748b' } } } }});
+
+if (HAS_STAMINA) {
+  document.getElementById('staminaCard').style.display = '';
+  new Chart(document.getElementById('chartStamina'), { type: 'line', data: { labels: LABELS, datasets: [{
+    data: thin(TS_STAMINA), borderColor: '#eab308', backgroundColor: '#eab30822', fill: true, tension: 0.3, spanGaps: true
+  }]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, min: 0, max: 100, title: { display: true, text: '%', color: '#64748b' } } } }});
+}
+
+if (HAS_TEMP) {
+  document.getElementById('tempCard').style.display = '';
+  new Chart(document.getElementById('chartTemp'), { type: 'line', data: { labels: LABELS, datasets: [{
+    data: thin(TS_TEMPERATURE), borderColor: '#f97316', backgroundColor: '#f9731622', fill: true, tension: 0.3, spanGaps: true
+  }]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: '°C', color: '#64748b' } } } }});
+}
+
+if (HAS_GCT) {
+  document.getElementById('gctCard').style.display = '';
+  new Chart(document.getElementById('chartGCT'), { type: 'line', data: { labels: LABELS, datasets: [{
+    data: thin(TS_GCT), borderColor: '#00d4ff', backgroundColor: '#00d4ff22', fill: true, tension: 0.2, spanGaps: true
+  }]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'ms', color: '#64748b' } } } }});
+}
+
+if (HAS_VO) {
+  document.getElementById('voCard').style.display = '';
+  new Chart(document.getElementById('chartVO'), { type: 'line', data: { labels: LABELS, datasets: [{
+    data: thin(TS_VO), borderColor: '#7c3aed', backgroundColor: '#7c3aed22', fill: true, tension: 0.2, spanGaps: true
+  }]}, options: { ...base, scales: { ...base.scales, y: { ...base.scales.y, title: { display: true, text: 'cm', color: '#64748b' } } } }});
+}
+</script>
+
+</body>
+</html>

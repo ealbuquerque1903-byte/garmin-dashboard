@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>Bem-estar 2026-06-04 — GarminAI</title>
+  <link rel="apple-touch-icon" href="../static/icon-180.png">
+  <link rel="icon" type="image/png" href="../static/icon-180.png">
+  <meta name="theme-color" content="#0f1117">
+  <meta name="apple-mobile-web-app-title" content="Garmin">
+  <link rel="manifest" href="../static/manifest.json">
+  <script src="../static/chart.min.js"></script>
+  <style>
+    :root {
+      --bg: #0f1117; --card: #1a1d27; --card2: #22263a;
+      --accent: #00d4ff; --green: #22c55e; --yellow: #eab308;
+      --red: #ef4444; --orange: #f97316; --purple: #7c3aed;
+      --text: #e2e8f0; --muted: #64748b; --border: #2d3748;
+      --safe-top: env(safe-area-inset-top, 0px);
+      --safe-bot: env(safe-area-inset-bottom, 0px);
+      --safe-l: env(safe-area-inset-left, 0px);
+      --safe-r: env(safe-area-inset-right, 0px);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+    html { -webkit-text-size-adjust: 100%; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px; line-height: 1.6;
+      padding-bottom: calc(80px + var(--safe-bot));
+      min-height: 100dvh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+
+    /* ── Top nav (desktop only) ── */
+    .top-nav {
+      background: var(--card); border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      padding-left: max(20px, var(--safe-l));
+      padding-right: max(20px, var(--safe-r));
+      display: flex; align-items: center; gap: 16px;
+      height: 52px; position: sticky; top: 0; z-index: 100;
+    }
+    .nav-brand { font-size: 17px; font-weight: 700; color: var(--accent); white-space: nowrap; }
+    .nav-brand span { color: var(--text); }
+    .nav-spacer { flex: 1; }
+
+    /* ── Bottom tab bar (mobile) ── */
+    .bottom-bar {
+      display: none;
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--card);
+      border-top: 1px solid var(--border);
+      padding: 8px 0;
+      padding-bottom: max(8px, var(--safe-bot));
+      z-index: 200;
+      grid-template-columns: repeat(4, 1fr);
+    }
+    .tab-btn {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      gap: 3px; padding: 6px 4px; border: none; background: none;
+      color: var(--muted); font-size: 10px; font-weight: 600;
+      cursor: pointer; min-height: 52px; width: 100%;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .tab-btn .icon { font-size: 22px; line-height: 1; }
+    .tab-btn.sync-tab { color: var(--accent); }
+    .tab-btn.sync-tab .icon { font-size: 26px; }
+    .tab-btn:active { opacity: 0.6; }
+
+    /* ── Back button ── */
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--accent); font-size: 15px; font-weight: 500;
+      padding: 8px 0; margin-bottom: 8px;
+      background: none; border: none; cursor: pointer;
+    }
+    .back-btn:active { opacity: 0.6; }
+
+    /* ── Sync status banner ── */
+    #sync-banner {
+      display: none; position: fixed;
+      top: 52px; left: 0; right: 0; z-index: 150;
+      background: var(--accent); color: #000;
+      text-align: center; padding: 10px 16px;
+      font-weight: 700; font-size: 14px;
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1280px; margin: 0 auto; padding: 16px; }
+    .page-title { font-size: 20px; font-weight: 700; margin-bottom: 16px; }
+    .section-title {
+      font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .1em; color: var(--muted); margin-bottom: 10px;
+    }
+
+    /* ── Cards ── */
+    .card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+    .card-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin-bottom: 6px; }
+    .card-value { font-size: 26px; font-weight: 700; }
+    .card-unit { font-size: 13px; color: var(--muted); margin-left: 3px; }
+
+    /* ── Grids ── */
+    .grid { display: grid; gap: 12px; }
+    .grid-2 { grid-template-columns: repeat(2, 1fr); }
+    .grid-3 { grid-template-columns: repeat(3, 1fr); }
+    .grid-4 { grid-template-columns: repeat(4, 1fr); }
+    .grid-6 { grid-template-columns: repeat(6, 1fr); }
+    .col-span-2 { grid-column: span 2; }
+
+    /* ── Mobile ── */
+    @media (max-width: 700px) {
+      .top-nav { display: none; }
+      .bottom-bar { display: grid; }
+      body { padding-bottom: calc(80px + var(--safe-bot)); padding-top: 0; }
+      .container { padding: 10px 10px 0; }
+      .grid-6 { grid-template-columns: repeat(3, 1fr); }
+      .grid-4 { grid-template-columns: repeat(2, 1fr); }
+      .grid-3 { grid-template-columns: repeat(2, 1fr); }
+      .grid-2 { grid-template-columns: 1fr; }
+      .col-span-2 { grid-column: span 1; }
+      .card-value { font-size: 20px; line-height: 1.2; }
+      .card { padding: 10px 8px; border-radius: 10px; }
+      .card-title { font-size: 9px; margin-bottom: 3px; letter-spacing: .04em; }
+      .card-unit { font-size: 11px; }
+      .hide-mobile { display: none !important; }
+      .page-title { font-size: 16px; margin-bottom: 8px; }
+      .section-title { margin-bottom: 6px; font-size: 10px; }
+      /* activity row: stack name/meta + stats, não deixa vazar */
+      .activity-row { gap: 8px; padding: 10px 0; flex-wrap: nowrap; }
+      .activity-icon { width: 34px; height: 34px; font-size: 16px; border-radius: 8px; }
+      .activity-name { font-size: 12px; line-height: 1.3; }
+      .activity-meta { font-size: 10px; }
+      .activity-stats { gap: 8px; flex-shrink: 0; }
+      .stat-label { font-size: 9px; }
+      .stat-value { font-size: 12px; }
+      /* badge menor no mobile */
+      .badge { font-size: 9px; padding: 1px 6px; }
+    }
+    @media (max-width: 430px) {
+      .grid-6 { grid-template-columns: repeat(3, 1fr); }
+      .card-value { font-size: 19px; }
+      .card { padding: 9px 7px; }
+      .container { padding: 8px 8px 0; }
+      .grid { gap: 8px; }
+    }
+    @media (max-width: 380px) {
+      .grid-6 { grid-template-columns: repeat(2, 1fr); }
+      .card-value { font-size: 18px; }
+    }
+
+    /* ── Badge ── */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+    .badge-green  { background: #14532d; color: var(--green); }
+    .badge-yellow { background: #713f12; color: var(--yellow); }
+    .badge-red    { background: #7f1d1d; color: var(--red); }
+    .badge-blue   { background: #1e3a5f; color: var(--accent); }
+
+    /* ── Activity row ── */
+    .activity-row {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 0; border-bottom: 1px solid var(--border);
+    }
+    .activity-row:last-child { border-bottom: none; }
+    .activity-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      background: var(--card2); display: flex; align-items: center;
+      justify-content: center; font-size: 20px; flex-shrink: 0;
+    }
+    .activity-name { font-weight: 600; font-size: 14px; }
+    .activity-meta { color: var(--muted); font-size: 12px; margin-top: 1px; }
+    .activity-stats { margin-left: auto; display: flex; gap: 14px; text-align: right; flex-shrink: 0; }
+    .stat-label { font-size: 10px; color: var(--muted); }
+    .stat-value { font-size: 13px; font-weight: 600; }
+    @media (max-width: 700px) {
+      .activity-row { gap: 10px; padding: 10px 0; }
+      .activity-icon { width: 36px; height: 36px; font-size: 18px; }
+      .activity-name { font-size: 13px; }
+      .activity-meta { font-size: 11px; }
+      .activity-stats { gap: 10px; }
+      .stat-value { font-size: 12px; }
+    }
+
+    /* ── Chart ── */
+    .chart-wrap { position: relative; height: 200px; }
+    .chart-wrap-tall { height: 240px; }
+    @media (max-width: 700px) {
+      .chart-wrap { height: 150px; }
+      .chart-wrap-tall { height: 170px; }
+    }
+
+    /* ── Table ── */
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 460px; }
+    th { text-align: left; padding: 8px 10px; font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border-bottom: 1px solid var(--border); }
+    td { padding: 10px; border-bottom: 1px solid var(--border); }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--card2); }
+
+    /* ── Zone bar ── */
+    .zone-bar { display: flex; height: 10px; border-radius: 5px; overflow: hidden; margin: 8px 0; }
+
+    /* ── Modal ── */
+    .modal-bg {
+      display: none; position: fixed; inset: 0; background: rgba(0,0,0,.8);
+      z-index: 300; align-items: flex-end; justify-content: center;
+    }
+    .modal-bg.open { display: flex; }
+    .modal {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 20px 20px 0 0;
+      padding: 24px 24px calc(24px + var(--safe-bot));
+      width: 100%; max-width: 500px;
+    }
+    @media (min-width: 701px) {
+      .modal-bg { align-items: center; }
+      .modal { border-radius: 16px; max-width: 440px; padding: 24px; }
+    }
+    .modal h3 { font-size: 17px; margin-bottom: 8px; }
+    .modal p { color: var(--muted); font-size: 13px; line-height: 1.6; margin-bottom: 12px; }
+    .modal input {
+      width: 100%; background: var(--card2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 10px; padding: 12px 14px;
+      font-size: 15px; margin-bottom: 12px; font-family: monospace;
+      -webkit-appearance: none;
+    }
+    .modal-btns { display: flex; gap: 10px; }
+    .btn { padding: 12px 20px; border-radius: 10px; font-size: 15px; font-weight: 600; border: none; cursor: pointer; flex: 1; min-height: 48px; }
+    .btn-primary { background: var(--accent); color: #000; }
+    .btn-ghost { background: var(--card2); color: var(--muted); }
+
+    /* ── Desktop nav buttons ── */
+    .nav-btn {
+      background: var(--accent); color: #000; border: none;
+      padding: 8px 16px; border-radius: 20px; font-size: 13px;
+      font-weight: 700; cursor: pointer; white-space: nowrap; min-height: 36px;
+    }
+    .nav-btn-ghost {
+      background: var(--card2); color: var(--muted); border: none;
+      padding: 7px 14px; border-radius: 20px; font-size: 12px;
+      font-weight: 600; cursor: pointer; white-space: nowrap; min-height: 36px;
+    }
+
+    /* ── Print ── */
+    @media print {
+      .top-nav, .bottom-bar, .modal-bg, .back-btn, #sync-banner { display: none !important; }
+      body { background: white; color: #111; padding: 0; }
+      .card { border: 1px solid #ddd; break-inside: avoid; background: white; }
+      .card-title, .section-title, .muted { color: #666 !important; }
+      a { color: #000; }
+    }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<!-- Nav desktop -->
+<nav class="top-nav">
+  <div class="nav-brand">⌚ Garmin<span>AI</span></div>
+  <a href="../index.html" style="color:var(--muted);font-size:13px;">Dashboard</a>
+  <div class="nav-spacer"></div>
+  <button class="nav-btn" onclick="startSync()">↻ Atualizar</button>
+  <button class="nav-btn-ghost" onclick="window.print()">🖨️ PDF</button>
+</nav>
+
+<!-- Banner de sincronização -->
+<div id="sync-banner"></div>
+
+<!-- Conteúdo -->
+<div class="container">
+
+<div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+  <a href="../index.html" style="color:var(--muted);font-size:13px;">← Dashboard</a>
+  <h1 class="page-title" style="margin:0;font-size:18px;">💤 Bem-estar — 2026-06-04</h1>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:12px;">
+  <div class="card">
+    <div class="card-title">💤 Sono</div>
+    <div class="card-value">84<span class="card-unit">/100</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:4px;">8h 13min</div>
+  </div>
+  <div class="card">
+    <div class="card-title">💓 HRV</div>
+    <div class="card-value">43.0<span class="card-unit">ms</span></div>
+    <div style="margin-top:4px;">
+      
+      <span class="badge badge-green">Equilibrado</span>
+      
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">❤️ FC Repouso</div>
+    <div class="card-value">—<span class="card-unit">bpm</span></div>
+  </div>
+  <div class="card">
+    <div class="card-title">🎯 Prontidão</div>
+    <div class="card-value">57<span class="card-unit">/100</span></div>
+    <div style="margin-top:4px;">
+      
+      <span class="badge badge-yellow">Moderada</span>
+      
+    </div>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:20px;">
+  <div class="card">
+    <div class="card-title">🌙 Deep Sleep</div>
+    <div class="card-value" style="font-size:18px;">1h 12min</div>
+  </div>
+  <div class="card">
+    <div class="card-title">🌀 REM Sleep</div>
+    <div class="card-value" style="font-size:18px;">1h 49min</div>
+  </div>
+  <div class="card">
+    <div class="card-title">⚡ Body Battery</div>
+    <div class="card-value">66<span class="card-unit">%</span></div>
+    <div style="color:var(--muted);font-size:11px;margin-top:3px;">Drenado: 72%</div>
+  </div>
+  <div class="card">
+    <div class="card-title">😤 Estresse</div>
+    <div class="card-value">39<span class="card-unit">/100</span></div>
+  </div>
+</div>
+
+
+<div class="section-title">Qualidade do Sono</div>
+<div class="card" style="margin-bottom:20px;">
+  <div style="display:flex;gap:24px;align-items:center;flex-wrap:wrap;">
+    <div style="text-align:center;min-width:100px;">
+      <svg width="100" height="100" viewBox="0 0 120 120">
+        <circle cx="60" cy="60" r="50" fill="none" stroke="#1e293b" stroke-width="12"/>
+        <circle cx="60" cy="60" r="50" fill="none"
+          stroke="#22c55e"
+          stroke-width="12"
+          stroke-dasharray="263.8 314"
+          stroke-dashoffset="78.5" stroke-linecap="round"/>
+        <text x="60" y="68" text-anchor="middle" font-size="30" font-weight="700"
+          fill="#22c55e">
+          84
+        </text>
+      </svg>
+      <div style="font-size:11px;color:var(--muted);">pontuação</div>
+    </div>
+    <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;min-width:200px;">
+      <div><div style="font-size:11px;color:var(--muted)">Total</div><div style="font-weight:600">8h 13min</div></div>
+      <div><div style="font-size:11px;color:var(--muted)">Deep</div><div style="font-weight:600;color:#7c3aed">1h 12min</div></div>
+      <div><div style="font-size:11px;color:var(--muted)">REM</div><div style="font-weight:600;color:#00d4ff">1h 49min</div></div>
+      <div><div style="font-size:11px;color:var(--muted)">Passos</div><div style="font-weight:600">—</div></div>
+    </div>
+  </div>
+</div>
+
+
+</div>
+
+<!-- Bottom bar mobile -->
+<div class="bottom-bar">
+  <button class="tab-btn" onclick="goBack()">
+    <span class="icon">←</span>
+    <span>Voltar</span>
+  </button>
+  <button class="tab-btn" onclick="window.location.href='../index.html'">
+    <span class="icon">📊</span>
+    <span>Dashboard</span>
+  </button>
+  <button class="tab-btn sync-tab" id="mobile-sync-btn" onclick="startSync()">
+    <span class="icon" id="mobile-sync-icon">↻</span>
+    <span id="mobile-sync-label">Atualizar</span>
+  </button>
+  <button class="tab-btn" onclick="window.print()">
+    <span class="icon">🖨️</span>
+    <span>PDF</span>
+  </button>
+</div>
+
+<!-- Modal token -->
+<div class="modal-bg" id="token-modal">
+  <div class="modal">
+    <h3>🔑 Configurar acesso</h3>
+    <p>Crie um <strong>GitHub Token</strong> em:<br>
+    github.com → Settings → Developer settings → Personal access tokens (classic)<br>
+    Escopos necessários: <strong>repo</strong> + <strong>workflow</strong></p>
+    <input type="password" id="token-input" placeholder="ghp_..." autocomplete="off" autocorrect="off" autocapitalize="none">
+    <div class="modal-btns">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveToken()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/garmin-dashboard/static/sw.js', { scope: '/garmin-dashboard/' })
+    .then(reg => reg.update());
+}
+
+Chart.defaults.color = '#64748b';
+Chart.defaults.borderColor = '#2d3748';
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";
+Chart.defaults.font.size = 11;
+
+const REPO_OWNER = 'ealbuquerque1903-byte';
+const REPO_NAME  = 'garmin-dashboard';
+const WORKFLOW   = 'sync.yml';
+
+function goBack() {
+  if (window.history.length > 1) window.history.back();
+  else window.location.href = '../index.html';
+}
+function getToken() { return localStorage.getItem('gh_pat'); }
+function closeModal() { document.getElementById('token-modal').classList.remove('open'); }
+function saveToken() {
+  const t = document.getElementById('token-input').value.trim();
+  if (!t) return;
+  localStorage.setItem('gh_pat', t);
+  closeModal();
+  startSync();
+}
+
+function setSyncState(label, icon, running) {
+  const banner = document.getElementById('sync-banner');
+  const mIcon  = document.getElementById('mobile-sync-icon');
+  const mLabel = document.getElementById('mobile-sync-label');
+  const mBtn   = document.getElementById('mobile-sync-btn');
+  if (banner) { banner.textContent = label; banner.style.display = running ? 'block' : 'none'; }
+  if (mIcon)  mIcon.textContent  = icon;
+  if (mLabel) mLabel.textContent = label;
+  if (mBtn)   mBtn.disabled = running;
+}
+
+async function startSync() {
+  const token = getToken();
+  if (!token) { document.getElementById('token-modal').classList.add('open'); return; }
+
+  setSyncState('Iniciando...', '⏳', true);
+
+  try {
+    const triggerTime = Date.now();
+    const res = await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/workflows/${WORKFLOW}/dispatches`,
+      { method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ref: 'main' }) }
+    );
+    if (res.status === 204) {
+      setSyncState('Sincronizando...', '⏳', true);
+      pollWorkflow(token, triggerTime);
+    } else if (res.status === 401) {
+      localStorage.removeItem('gh_pat');
+      setSyncState('Token inválido', '↻', false);
+      setTimeout(() => setSyncState('Atualizar', '↻', false), 3000);
+      document.getElementById('token-modal').classList.add('open');
+    } else {
+      throw new Error(`HTTP ${res.status}`);
+    }
+  } catch(e) {
+    setSyncState('Erro: ' + e.message, '↻', false);
+    setTimeout(() => setSyncState('Atualizar', '↻', false), 4000);
+  }
+}
+
+async function pollWorkflow(token, triggerTime, attempt = 0) {
+  const MAX_ATTEMPTS = 60; // 10 min (60 × 10s)
+  if (attempt >= MAX_ATTEMPTS) {
+    setSyncState('Timeout — recarregue manualmente', '↻', false);
+    return;
+  }
+  // Aguarda 8s antes da primeira verificação (o Actions leva alguns segundos pra registrar o run)
+  await new Promise(r => setTimeout(r, attempt === 0 ? 8000 : 10000));
+  try {
+    const r = await fetch(
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/actions/runs?event=workflow_dispatch&per_page=5`,
+      { headers: { 'Authorization': `Bearer ${token}` } }
+    );
+    const data = await r.json();
+    // Encontra o run disparado depois do nosso clique
+    const run = (data.workflow_runs || []).find(run => {
+      const created = new Date(run.created_at).getTime();
+      return created >= triggerTime - 30000; // 30s de tolerância
+    });
+    if (!run) {
+      setSyncState('Aguardando início...', '⏳', true);
+      return pollWorkflow(token, triggerTime, attempt + 1);
+    }
+    if (run.status === 'completed') {
+      if (run.conclusion === 'success') {
+        // Aguarda 30s para o GitHub Pages propagar o novo deploy antes de recarregar
+        let secs = 30;
+        const tick = () => {
+          setSyncState(`Publicando... (${secs}s)`, '✓', false);
+          if (secs-- > 0) { setTimeout(tick, 1000); }
+          else {
+            const base = window.location.href.split('?')[0];
+            window.location.replace(base + '?t=' + Date.now());
+          }
+        };
+        tick();
+      } else {
+        setSyncState('Falha no sync — veja GitHub Actions', '↻', false);
+        setTimeout(() => setSyncState('Atualizar', '↻', false), 5000);
+      }
+      return;
+    }
+    // Ainda rodando — mostra status
+    const labels = { queued: 'Na fila...', in_progress: 'Sincronizando...' };
+    setSyncState(labels[run.status] || 'Sincronizando...', '⏳', true);
+    pollWorkflow(token, triggerTime, attempt + 1);
+  } catch(e) {
+    pollWorkflow(token, triggerTime, attempt + 1);
+  }
+}
+</script>
+
+</body>
+</html>
