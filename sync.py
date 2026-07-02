@@ -77,6 +77,9 @@ def load_client():
     try:
         client = Garmin()
         client.garth.load(str(token_path))
+        # display_name é necessário para endpoints de RHR e steps; não é preenchido ao carregar tokens
+        if not client.display_name:
+            client.display_name = client.garth.profile.get("displayName", "")
         print(f"Tokens carregados de {token_path}")
         return client
     except Exception as e:
