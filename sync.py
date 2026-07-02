@@ -2,6 +2,14 @@
 """
 Garmin Sync — coleta treinos + bem-estar do Garmin Connect
 e salva tudo em garmin/history.json
+
+Versão garminconnect: 0.3.6
+  - Autenticação nativa (sem garth), tokens em .garmin_tokens_v3/garmin_tokens.json
+  - Refresh automático de tokens a cada run (rotação pelo Garmin); workflow persiste
+    token atualizado de volta ao Secret GARMIN_TOKENS via gh CLI
+  - Todos os métodos usados têm assinatura idêntica à v0.2.8
+  - display_name: disponível como atributo após login; fallback via connectapi mantido
+  - Grava auth_failed.flag se detectar erro de autenticação (para alerta por e-mail no CI)
 """
 
 import json
@@ -22,9 +30,11 @@ if os.path.exists(_env_file):
 from datetime import date, timedelta
 from pathlib import Path
 
-TOKEN_DIR  = str(Path(__file__).parent / ".garmin_tokens")
+_DEFAULT_TOKEN_DIR = str(Path(__file__).parent / ".garmin_tokens_v3")
+TOKEN_DIR  = os.environ.get("GARMIN_TOKEN_DIR", _DEFAULT_TOKEN_DIR)
 GARMIN_DIR = Path(__file__).parent / "garmin"
 DB_FILE    = Path(__file__).parent / "garmin" / "history.json"
+AUTH_FLAG  = Path(__file__).parent / "auth_failed.flag"
 
 # ── client ──────────────────────────────────────────────────────────────────
 
@@ -70,42 +80,62 @@ def fetch_hr_zone_limits(client) -> dict:
 
 def load_client():
     from garminconnect import Garmin
+
     token_path = Path(TOKEN_DIR)
-    if not token_path.exists():
-        print("Diretório .garmin_tokens não encontrado.")
+    token_file = token_path / "garmin_tokens.json"
+
+    if not token_path.exists() or not token_file.exists():
+        msg = (
+            "Tokens ausentes/expirados. "
+            "Rode 'python3 login.py' localmente e atualize o Secret GARMIN_TOKENS."
+        )
+        print(f"ERRO: {msg}")
+        AUTH_FLAG.write_text(msg)
         raise SystemExit(1)
+
     try:
-        client = Garmin()
-        client.garth.load(str(token_path))
-        # display_name é necessário para endpoints de RHR e steps; não é preenchido ao carregar tokens
-        if not client.display_name:
-            try:
-                prof = client.garth.profile or {}
-                client.display_name = prof.get("displayName", "")
-            except Exception:
-                pass
-        if not client.display_name:
-            try:
-                prof = client.connectapi("/userprofile-service/socialProfile")
-                client.display_name = (prof or {}).get("displayName", "")
-            except Exception as e:
-                print(f"  Aviso display_name: {e}")
-        print(f"Tokens carregados de {token_path}")
-        return client
+        # token_store aponta para o diretório; lib carrega garmin_tokens.json automaticamente.
+        # login() sem credenciais recarrega do store e renova o access token se necessário.
+        client = Garmin(token_store=str(token_path))
+        client.login()
     except Exception as e:
-        print(f"Erro ao carregar tokens: {e}")
+        err = str(e).lower()
+        is_auth = any(w in err for w in (
+            "invalid", "unauthorized", "401", "403", "token", "expired",
+            "login", "auth", "credential", "forbidden",
+        ))
+        if is_auth:
+            msg = (
+                f"Falha de autenticação Garmin: {e}. "
+                "Rode 'python3 login.py' localmente e atualize o Secret GARMIN_TOKENS."
+            )
+            print(f"ERRO: {msg}")
+            AUTH_FLAG.write_text(msg)
+        else:
+            print(f"Erro ao carregar tokens: {e}")
         raise SystemExit(1)
+
+    # display_name: disponível como atributo em 0.3.6; fallback via API se vazio
+    if not getattr(client, "display_name", None):
+        try:
+            prof = client.connectapi("/userprofile-service/socialProfile")
+            client.display_name = (prof or {}).get("displayName", "")
+        except Exception as e:
+            print(f"  Aviso display_name: {e}")
+
+    print(f"Tokens carregados de {token_path}")
+    return client
 
 # ── formatters ───────────────────────────────────────────────────────────────
 
 def fmt_duration(seconds):
-    if not seconds: return "—"
+    if seconds is None: return "—"
     s = int(seconds)
     h, m, sec = s // 3600, (s % 3600) // 60, s % 60
     return f"{h}h {m:02d}min" if h else f"{m}min {sec:02d}s"
 
 def fmt_pace(mps):
-    if not mps: return "—"
+    if mps is None or float(mps) <= 0: return "—"
     spk = 1000 / float(mps)
     return f"{int(spk)//60}:{int(spk)%60:02d} /km"
 
@@ -240,7 +270,7 @@ def fetch_wellness(client, day: date) -> dict:
         "stress_avg":               raw["stress"].get("avgStressLevel") if isinstance(raw["stress"], dict) else None,
         "training_readiness_score": tr_list[0].get("score") if tr_list else None,
         "training_readiness_level": tr_list[0].get("level") if tr_list else None,
-        "steps":                    sum(s.get("steps", 0) for s in steps_list),
+        "steps":                    sum(s.get("steps", 0) for s in steps_list) if steps_list else None,
     }
 
 # ── activity ─────────────────────────────────────────────────────────────────
@@ -409,7 +439,10 @@ def save_history(history: dict):
 
 def sync(days: int = 30):
     client = load_client()
-    print(f"Conectado como: {client.get_full_name()}\n")
+    try:
+        print(f"Conectado como: {client.get_full_name()}\n")
+    except Exception:
+        print("Aviso: não foi possível obter nome do usuário\n")
 
     GARMIN_DIR.mkdir(exist_ok=True)
     history = load_history()
@@ -442,6 +475,7 @@ def sync(days: int = 30):
     try:    activities = client.get_activities_by_date(start_str, today.isoformat())
     except Exception as e: print(f"  Aviso: {e}"); activities = []
 
+    new_ids = []
     for act in activities:
         act_id   = str(act.get("activityId", ""))
         act_name = act.get("activityName", "?")
@@ -451,10 +485,15 @@ def sync(days: int = 30):
             continue
         print(f"  {act_date} — {act_name}")
         history["activities"][act_id] = fetch_activity(client, act)
+        new_ids.append(act_id)
         print(f"    ✓")
 
     save_history(history)
-    print(f"\nConcluído! {days} dias, {len(activities)} atividade(s).")
+
+    # Grava lista de atividades novas para report.py consumir
+    new_acts_file = Path(__file__).parent / "garmin" / "new_activities.json"
+    new_acts_file.write_text(json.dumps(new_ids, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"\nConcluído! {days} dias, {len(new_ids)} atividade(s) nova(s) de {len(activities)} total.")
 
 if __name__ == "__main__":
     days = int(sys.argv[1]) if len(sys.argv) > 1 else 30

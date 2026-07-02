@@ -1,12 +1,20 @@
 # Credenciais — NUNCA versionar
 .garmin_tokens/
+.garmin_tokens_v3/
 .env
 *.token
 sync.log
+auth_failed.flag
 
 # Pasta garmin — só history.json é versionado
 garmin/*.md
 garmin/data.json
+
+# Relatórios PDF — gerados em runtime, nunca commitados
+reports/
+
+# Atividades novas — arquivo temporário entre sync.py e report.py
+garmin/new_activities.json
 
 # Python cache
 __pycache__/
