@@ -15,7 +15,7 @@
       "stress_avg": 22,
       "training_readiness_score": 50,
       "training_readiness_level": "MODERATE",
-      "steps": 11559
+      "steps": 0
     },
     "2026-06-29": {
       "date": "2026-06-29",
@@ -32,7 +32,7 @@
       "stress_avg": 34,
       "training_readiness_score": 51,
       "training_readiness_level": "MODERATE",
-      "steps": 10762
+      "steps": 0
     },
     "2026-06-28": {
       "date": "2026-06-28",
@@ -49,7 +49,7 @@
       "stress_avg": 32,
       "training_readiness_score": 25,
       "training_readiness_level": "LOW",
-      "steps": 12713
+      "steps": 0
     },
     "2026-06-27": {
       "date": "2026-06-27",
@@ -66,7 +66,7 @@
       "stress_avg": 35,
       "training_readiness_score": 1,
       "training_readiness_level": "POOR",
-      "steps": 18368
+      "steps": 0
     },
     "2026-06-26": {
       "date": "2026-06-26",
@@ -83,7 +83,7 @@
       "stress_avg": 27,
       "training_readiness_score": 50,
       "training_readiness_level": "MODERATE",
-      "steps": 7930
+      "steps": 0
     },
     "2026-07-01": {
       "date": "2026-07-01",
@@ -100,7 +100,7 @@
       "stress_avg": 20,
       "training_readiness_score": 41,
       "training_readiness_level": "LOW",
-      "steps": 3624
+      "steps": 0
     },
     "2026-06-25": {
       "date": "2026-06-25",
@@ -117,7 +117,7 @@
       "stress_avg": 27,
       "training_readiness_score": 46,
       "training_readiness_level": "LOW",
-      "steps": 9572
+      "steps": 0
     },
     "2026-07-02": {
       "date": "2026-07-02",
@@ -134,7 +134,7 @@
       "stress_avg": 11,
       "training_readiness_score": 61,
       "training_readiness_level": "MODERATE",
-      "steps": 589
+      "steps": 0
     },
     "2026-06-24": {
       "date": "2026-06-24",
@@ -151,7 +151,7 @@
       "stress_avg": 31,
       "training_readiness_score": 40,
       "training_readiness_level": "LOW",
-      "steps": 4429
+      "steps": 0
     },
     "2026-06-23": {
       "date": "2026-06-23",
@@ -168,7 +168,7 @@
       "stress_avg": 24,
       "training_readiness_score": 34,
       "training_readiness_level": "LOW",
-      "steps": 8742
+      "steps": 0
     },
     "2026-06-22": {
       "date": "2026-06-22",
@@ -185,7 +185,7 @@
       "stress_avg": 40,
       "training_readiness_score": 2,
       "training_readiness_level": "POOR",
-      "steps": 7740
+      "steps": 0
     },
     "2026-06-21": {
       "date": "2026-06-21",
@@ -202,7 +202,7 @@
       "stress_avg": 40,
       "training_readiness_score": 51,
       "training_readiness_level": "MODERATE",
-      "steps": 4353
+      "steps": 0
     },
     "2026-06-20": {
       "date": "2026-06-20",
@@ -219,7 +219,7 @@
       "stress_avg": 47,
       "training_readiness_score": 26,
       "training_readiness_level": "LOW",
-      "steps": 6085
+      "steps": 0
     },
     "2026-06-19": {
       "date": "2026-06-19",
@@ -236,7 +236,7 @@
       "stress_avg": 28,
       "training_readiness_score": 8,
       "training_readiness_level": "POOR",
-      "steps": 5139
+      "steps": 0
     },
     "2026-06-18": {
       "date": "2026-06-18",
@@ -253,7 +253,7 @@
       "stress_avg": 26,
       "training_readiness_score": 1,
       "training_readiness_level": "POOR",
-      "steps": 10315
+      "steps": 0
     },
     "2026-06-17": {
       "date": "2026-06-17",
@@ -270,7 +270,7 @@
       "stress_avg": 22,
       "training_readiness_score": 34,
       "training_readiness_level": "LOW",
-      "steps": 4464
+      "steps": 0
     },
     "2026-06-16": {
       "date": "2026-06-16",
@@ -287,7 +287,7 @@
       "stress_avg": 24,
       "training_readiness_score": 31,
       "training_readiness_level": "LOW",
-      "steps": 11855
+      "steps": 0
     },
     "2026-06-15": {
       "date": "2026-06-15",
@@ -304,7 +304,7 @@
       "stress_avg": 30,
       "training_readiness_score": 31,
       "training_readiness_level": "LOW",
-      "steps": 12928
+      "steps": 0
     },
     "2026-06-14": {
       "date": "2026-06-14",
@@ -321,7 +321,7 @@
       "stress_avg": 34,
       "training_readiness_score": 4,
       "training_readiness_level": "POOR",
-      "steps": 4299
+      "steps": 0
     },
     "2026-06-13": {
       "date": "2026-06-13",
@@ -338,7 +338,7 @@
       "stress_avg": 57,
       "training_readiness_score": 16,
       "training_readiness_level": "POOR",
-      "steps": 11538
+      "steps": 0
     },
     "2026-06-12": {
       "date": "2026-06-12",
@@ -355,7 +355,7 @@
       "stress_avg": 33,
       "training_readiness_score": 54,
       "training_readiness_level": "MODERATE",
-      "steps": 7073
+      "steps": 0
     },
     "2026-06-11": {
       "date": "2026-06-11",
@@ -372,7 +372,7 @@
       "stress_avg": 26,
       "training_readiness_score": 54,
       "training_readiness_level": "MODERATE",
-      "steps": 12848
+      "steps": 0
     },
     "2026-06-10": {
       "date": "2026-06-10",
@@ -389,7 +389,7 @@
       "stress_avg": 29,
       "training_readiness_score": 50,
       "training_readiness_level": "MODERATE",
-      "steps": 5749
+      "steps": 0
     },
     "2026-06-09": {
       "date": "2026-06-09",
@@ -406,7 +406,7 @@
       "stress_avg": 33,
       "training_readiness_score": 25,
       "training_readiness_level": "LOW",
-      "steps": 15329
+      "steps": 0
     },
     "2026-06-08": {
       "date": "2026-06-08",
@@ -423,7 +423,7 @@
       "stress_avg": 27,
       "training_readiness_score": 33,
       "training_readiness_level": "LOW",
-      "steps": 10642
+      "steps": 0
     },
     "2026-06-07": {
       "date": "2026-06-07",
@@ -440,7 +440,7 @@
       "stress_avg": 45,
       "training_readiness_score": 2,
       "training_readiness_level": "POOR",
-      "steps": 4462
+      "steps": 0
     },
     "2026-06-06": {
       "date": "2026-06-06",
@@ -457,7 +457,7 @@
       "stress_avg": 47,
       "training_readiness_score": 13,
       "training_readiness_level": "POOR",
-      "steps": 32042
+      "steps": 0
     },
     "2026-06-05": {
       "date": "2026-06-05",
@@ -474,7 +474,7 @@
       "stress_avg": 27,
       "training_readiness_score": 80,
       "training_readiness_level": "HIGH",
-      "steps": 9955
+      "steps": 0
     },
     "2026-06-04": {
       "date": "2026-06-04",
@@ -491,7 +491,7 @@
       "stress_avg": 39,
       "training_readiness_score": 57,
       "training_readiness_level": "MODERATE",
-      "steps": 17341
+      "steps": 0
     },
     "2026-06-03": {
       "date": "2026-06-03",
@@ -508,7 +508,7 @@
       "stress_avg": 32,
       "training_readiness_score": 54,
       "training_readiness_level": "MODERATE",
-      "steps": 9509
+      "steps": 0
     },
     "2026-06-02": {
       "date": "2026-06-02",
@@ -585468,43 +585468,6 @@
       ]
     }
   },
-  "devices": [
-    {
-      "id": "3621417720",
-      "name": "HRM 600",
-      "firmware": "5.20",
-      "primary": false
-    },
-    {
-      "id": "3618164707",
-      "name": "Forerunner 970",
-      "firmware": "17.33",
-      "primary": true
-    }
-  ],
-  "hr_zone_limits": {
-    "max_hr": 186,
-    "zones": [
-      {
-        "floor": 92,
-        "ceil": 125
-      },
-      {
-        "floor": 126,
-        "ceil": 137
-      },
-      {
-        "floor": 138,
-        "ceil": 161
-      },
-      {
-        "floor": 162,
-        "ceil": 171
-      },
-      {
-        "floor": 172,
-        "ceil": 186
-      }
-    ]
-  }
+  "devices": [],
+  "hr_zone_limits": {}
 }
