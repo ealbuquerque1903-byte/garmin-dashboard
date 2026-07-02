@@ -79,7 +79,17 @@ def load_client():
         client.garth.load(str(token_path))
         # display_name é necessário para endpoints de RHR e steps; não é preenchido ao carregar tokens
         if not client.display_name:
-            client.display_name = client.garth.profile.get("displayName", "")
+            try:
+                prof = client.garth.profile or {}
+                client.display_name = prof.get("displayName", "")
+            except Exception:
+                pass
+        if not client.display_name:
+            try:
+                prof = client.connectapi("/userprofile-service/socialProfile")
+                client.display_name = (prof or {}).get("displayName", "")
+            except Exception as e:
+                print(f"  Aviso display_name: {e}")
         print(f"Tokens carregados de {token_path}")
         return client
     except Exception as e:
