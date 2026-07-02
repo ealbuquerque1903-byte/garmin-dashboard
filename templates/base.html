@@ -411,7 +411,7 @@ async function pollWorkflow(token, triggerTime, attempt = 0) {
         let secs = 30;
         const tick = () => {
           setSyncState(`Publicando... (${secs}s)`, '✓', false);
-          if (secs-- > 0) { setTimeout(tick, 1000); }
+          if (secs > 0) { secs--; setTimeout(tick, 1000); }
           else {
             const base = window.location.href.split('?')[0];
             window.location.replace(base + '?t=' + Date.now());

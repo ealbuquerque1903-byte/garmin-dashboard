@@ -415,7 +415,7 @@ def sync(days: int = 30):
         existing = history["wellness"].get(ds, {})
         merged   = {**existing}
         for k, v in new_w.items():
-            if v is not None and v != 0 and v != [] and v != "":
+            if v is not None and v != [] and v != "" and v != "—":
                 merged[k] = v
         history["wellness"][ds] = merged
         print("✓")
