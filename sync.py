@@ -411,7 +411,13 @@ def sync(days: int = 30):
         day = today - timedelta(days=i)
         ds  = day.isoformat()
         print(f"  {ds}", end=" ", flush=True)
-        history["wellness"][ds] = fetch_wellness(client, day)
+        new_w    = fetch_wellness(client, day)
+        existing = history["wellness"].get(ds, {})
+        merged   = {**existing}
+        for k, v in new_w.items():
+            if v is not None and v != 0 and v != [] and v != "":
+                merged[k] = v
+        history["wellness"][ds] = merged
         print("✓")
 
     start_str = (today - timedelta(days=days)).isoformat()

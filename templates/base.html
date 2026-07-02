@@ -296,6 +296,11 @@
 </div>
 
 <script>
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('/garmin-dashboard/static/sw.js', { scope: '/garmin-dashboard/' })
+    .then(reg => reg.update());
+}
+
 Chart.defaults.color = '#64748b';
 Chart.defaults.borderColor = '#2d3748';
 Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif";

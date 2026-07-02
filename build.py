@@ -53,6 +53,14 @@ def build_index(jenv, history):
     activities  = sorted_activities(history)
     recent_w    = list(reversed(wellness[:30]))
 
+    # "hoje" = dia mais recente que tenha pelo menos um KPI real
+    _TODAY_KEYS = ("sleep_score","hrv_avg","rhr","body_battery_charged","stress_avg","training_readiness_score")
+    today_data = {}
+    for _d, _w in wellness:
+        if any(_w.get(k) for k in _TODAY_KEYS):
+            today_data = _w
+            break
+
     chart_dates    = [w[0] for w in recent_w]
     chart_hrv      = [w[1].get("hrv_avg")                    for w in recent_w]
     chart_rhr      = [w[1].get("rhr")                        for w in recent_w]
@@ -69,7 +77,7 @@ def build_index(jenv, history):
     html = tmpl.render(
         activities    = activities,
         wellness      = wellness[:14],
-        today         = wellness[0][1] if wellness else {},
+        today         = today_data,
         chart_dates   = json.dumps(chart_dates),
         chart_hrv     = json.dumps(chart_hrv),
         chart_rhr     = json.dumps(chart_rhr),
