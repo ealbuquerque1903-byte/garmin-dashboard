@@ -90,24 +90,31 @@ Em **Settings → Secrets and variables → Actions**, criar:
 
 ### Criar o Atalho
 
-1. Abra o app **Atalhos** no iPhone
-2. Toque em **+** para criar novo atalho
-3. *(Opcional)* Adicione a ação **"Escolher no Menu"** com as opções:
-   - `atividades`
-   - `consolidado`
-   - `ambos`
-4. Adicione a ação **"Obter Conteúdo de URL"** com:
-   - **URL:** `https://api.github.com/repos/{SEU_USUARIO}/{SEU_REPO}/actions/workflows/sync.yml/dispatches`
-   - **Método:** POST
-   - **Cabeçalhos:**
-     - `Authorization` → `Bearer SEU_PAT_AQUI`
-     - `Accept` → `application/vnd.github+json`
-   - **Corpo:** JSON
+1. Abra o app **Atalhos** no iPhone e toque em **+**
+2. Adicione a ação **"Escolher no Menu"** com as opções:
+   - `Atividades novas`
+   - `Um dia específico`
+   - `Consolidado 30 dias`
+3. **Caso "Atividades novas":** Obter Conteúdo de URL (POST, corpo abaixo)
+   ```json
+   {"ref":"main","inputs":{"report_type":"atividades"}}
+   ```
+4. **Caso "Um dia específico":**
+   - Ação **"Solicitar Entrada"** → tipo **Data** (desmarcar "Incluir Hora")
+   - Ação **"Formatar Data"** → formato personalizado `yyyy-MM-dd`
+   - Obter Conteúdo de URL (POST), corpo:
      ```json
-     {"ref":"main","inputs":{"report_type":"atividades"}}
+     {"ref":"main","inputs":{"report_type":"dia","data":"[Data Formatada]"}}
      ```
-     *(Se usou o menu, substitua `"atividades"` pela variável de resultado do menu)*
-5. Renomeie para **"Garmin Report"** e adicione à tela de início
+     *(substituir `[Data Formatada]` pela variável mágica da ação anterior)*
+5. **Caso "Consolidado 30 dias":** Obter Conteúdo de URL (POST, corpo abaixo)
+   ```json
+   {"ref":"main","inputs":{"report_type":"consolidado"}}
+   ```
+6. Todos os POSTs usam:
+   - **URL:** `https://api.github.com/repos/ealbuquerque1903-byte/garmin-dashboard/actions/workflows/sync.yml/dispatches`
+   - **Cabeçalhos:** `Authorization: Bearer {SEU_PAT}` · `Accept: application/vnd.github+json`
+7. Renomeie para **"Garmin Report"** e adicione à tela de início
 
 Uma resposta HTTP 204 confirma que o workflow foi disparado. O e-mail chega em alguns minutos.
 
@@ -118,8 +125,9 @@ Uma resposta HTTP 204 confirma que o workflow foi disparado. O e-mail chega em a
 | Opção | Descrição |
 |-------|-----------|
 | `atividades` | 1 PDF por atividade nova desde o último sync |
+| `dia` | 1 PDF por atividade de uma data específica (requer campo `data`) |
 | `consolidado` | 1 PDF com tendências e tabelas dos últimos 30 dias |
-| `ambos` | Os dois acima |
+| `ambos` | `atividades` + `consolidado` |
 
 ---
 

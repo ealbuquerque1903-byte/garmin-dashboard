@@ -7,7 +7,12 @@ on:
         description: 'Tipo de relatório'
         type: choice
         default: 'atividades'
-        options: [atividades, consolidado, ambos]
+        options: [atividades, dia, consolidado, ambos]
+      data:
+        description: 'Data (YYYY-MM-DD) — obrigatória apenas para report_type=dia'
+        type: string
+        required: false
+        default: ''
 
 concurrency:
   group: garmin-sync
@@ -23,6 +28,14 @@ jobs:
       contents: write
 
     steps:
+      - name: Validar input data (modo dia)
+        if: ${{ inputs.report_type == 'dia' }}
+        run: |
+          if [ -z "${{ inputs.data }}" ]; then
+            echo "ERRO: report_type=dia requer o campo 'data' preenchido (YYYY-MM-DD)."
+            exit 1
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -94,7 +107,12 @@ jobs:
              git push)
 
       - name: Gerar relatórios PDF
-        run: python3 report.py ${{ inputs.report_type }}
+        run: |
+          if [ "${{ inputs.report_type }}" = "dia" ]; then
+            python3 report.py dia "${{ inputs.data }}"
+          else
+            python3 report.py ${{ inputs.report_type }}
+          fi
 
       - name: Enviar e-mail com relatórios
         env:

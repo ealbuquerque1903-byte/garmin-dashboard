@@ -3,9 +3,10 @@
 Gera relatórios PDF a partir do garmin/history.json.
 
 Uso:
-  python3 report.py atividades    # PDF por atividade em garmin/new_activities.json
-  python3 report.py consolidado   # PDF consolidado dos últimos 30 dias
-  python3 report.py ambos         # os dois
+  python3 report.py atividades          # PDF por atividade em garmin/new_activities.json
+  python3 report.py dia 2026-07-01      # PDF de cada atividade de uma data específica
+  python3 report.py consolidado         # PDF consolidado dos últimos 30 dias
+  python3 report.py ambos               # atividades + consolidado
 """
 
 import json
@@ -430,21 +431,27 @@ def pdf_atividade(activity: dict, history: dict) -> Path:
         story.append(splits_table(laps))
         story.append(Spacer(1, 6))
 
-    # ── Wellness do dia ────────────────────────────────────────────────────
-    if any(wellness.get(k) for k in ("sleep_score","hrv_avg","rhr","training_readiness_score")):
-        story.append(Paragraph("Bem-Estar do Dia", styles["section"]))
+    # ── Saúde do dia ──────────────────────────────────────────────────────
+    story.append(Paragraph("Saúde do Dia", styles["section"]))
+    if wellness:
         w_kpis = [
-            ("Sono",        val(wellness.get("sleep_score"), suffix="/100") +
-                            (f" ({wellness['sleep_duration']})" if wellness.get("sleep_duration") else "")),
-            ("HRV",         val(wellness.get("hrv_avg"), "%.0f", " ms") +
-                            (f" ({wellness['hrv_status']})" if wellness.get("hrv_status") else "")),
-            ("FC repouso",  val(wellness.get("rhr"), suffix=" bpm")),
-            ("Prontidão",   val(wellness.get("training_readiness_score"), suffix="/100") +
-                            (f" ({wellness['training_readiness_level']})" if wellness.get("training_readiness_level") else "")),
-            ("Body battery",val(wellness.get("body_battery_charged"), suffix="%")),
-            ("Estresse",    val(wellness.get("stress_avg"), suffix="/100")),
+            ("Sono",              val(wellness.get("sleep_score"), suffix="/100") +
+                                  (f" ({wellness['sleep_duration']})" if wellness.get("sleep_duration") else "")),
+            ("Sono profundo",     wellness.get("deep_sleep") or "—"),
+            ("Sono REM",          wellness.get("rem_sleep") or "—"),
+            ("HRV média",         val(wellness.get("hrv_avg"), "%.0f", " ms") +
+                                  (f" ({wellness['hrv_status']})" if wellness.get("hrv_status") else "")),
+            ("FC repouso",        val(wellness.get("rhr"), suffix=" bpm")),
+            ("Body battery",      val(wellness.get("body_battery_charged"), suffix="%")),
+            ("Battery drenada",   val(wellness.get("body_battery_drained"), suffix="%")),
+            ("Estresse médio",    val(wellness.get("stress_avg"), suffix="/100")),
+            ("Prontidão",         val(wellness.get("training_readiness_score"), suffix="/100") +
+                                  (f" ({wellness['training_readiness_level']})" if wellness.get("training_readiness_level") else "")),
+            ("Passos",            val(wellness.get("steps"))),
         ]
         story.append(kpi_table(w_kpis))
+    else:
+        story.append(Paragraph("Sem dados de saúde para esta data.", styles["small"]))
 
     doc.build(story)
     print(f"  ✓ {fname.name}")
@@ -632,13 +639,34 @@ def pdf_consolidado(history: dict) -> Path:
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    if len(sys.argv) < 2 or sys.argv[1] not in ("atividades", "consolidado", "ambos"):
-        print("Uso: python3 report.py [atividades|consolidado|ambos]")
+    MODOS = ("atividades", "dia", "consolidado", "ambos")
+    if len(sys.argv) < 2 or sys.argv[1] not in MODOS:
+        print("Uso: python3 report.py [atividades|dia YYYY-MM-DD|consolidado|ambos]")
         raise SystemExit(1)
 
     mode = sys.argv[1]
     REPORTS_DIR.mkdir(exist_ok=True)
     history = load_history()
+
+    if mode == "dia":
+        if len(sys.argv) < 3 or not sys.argv[2]:
+            print("ERRO: modo 'dia' requer uma data: python3 report.py dia YYYY-MM-DD")
+            raise SystemExit(1)
+        data_str = sys.argv[2]
+        try:
+            date.fromisoformat(data_str)
+        except ValueError:
+            print(f"ERRO: data inválida '{data_str}'. Use o formato YYYY-MM-DD.")
+            raise SystemExit(1)
+        atividades_dia = [
+            a for a in history.get("activities", {}).values()
+            if a.get("date") == data_str
+        ]
+        print(f"Gerando PDFs para {data_str} ({len(atividades_dia)} atividade(s))...")
+        for act in atividades_dia:
+            pdf_atividade(act, history)
+        if not atividades_dia:
+            print(f"  Nenhuma atividade em {data_str}.")
 
     if mode in ("atividades", "ambos"):
         new_ids = load_new_activity_ids()
