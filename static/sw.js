@@ -1,4 +1,4 @@
-const CACHE = 'garmin-v1';
+const CACHE = 'garmin-v3';
 const STATIC = ['/garmin-dashboard/static/chart.min.js', '/garmin-dashboard/static/icon-180.png'];
 
 self.addEventListener('install', e => {

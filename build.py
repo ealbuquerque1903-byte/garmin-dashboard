@@ -36,8 +36,12 @@ def env():
 
 # ── helpers ─────────────────────────────────────────────────────────────────
 
+_WELL_KEYS = ("sleep_score","hrv_avg","rhr","body_battery_charged","stress_avg","training_readiness_score","steps")
+
 def sorted_wellness(history):
-    return sorted(history.get("wellness", {}).items(), key=lambda x: x[0], reverse=True)
+    items = sorted(history.get("wellness", {}).items(), key=lambda x: x[0], reverse=True)
+    # Remove dias completamente vazios (sem nenhum campo com valor real)
+    return [(d, w) for d, w in items if any(w.get(k) for k in _WELL_KEYS)]
 
 def sorted_activities(history):
     return sorted(history.get("activities", {}).values(),
@@ -53,13 +57,8 @@ def build_index(jenv, history):
     activities  = sorted_activities(history)
     recent_w    = list(reversed(wellness[:30]))
 
-    # "hoje" = dia mais recente que tenha pelo menos um KPI real
-    _TODAY_KEYS = ("sleep_score","hrv_avg","rhr","body_battery_charged","stress_avg","training_readiness_score")
-    today_data = {}
-    for _d, _w in wellness:
-        if any(_w.get(k) for k in _TODAY_KEYS):
-            today_data = _w
-            break
+    # "hoje" = dia mais recente que tenha pelo menos um KPI real (wellness já filtrado)
+    today_data = wellness[0][1] if wellness else {}
 
     chart_dates    = [w[0] for w in recent_w]
     chart_hrv      = [w[1].get("hrv_avg")                    for w in recent_w]
