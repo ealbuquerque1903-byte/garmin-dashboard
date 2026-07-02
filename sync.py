@@ -416,8 +416,12 @@ def sync(days: int = 30):
     today   = date.today()
 
     print("Dispositivos e zonas FC...")
-    history["devices"]        = fetch_devices(client)
-    history["hr_zone_limits"] = fetch_hr_zone_limits(client)
+    devices = fetch_devices(client)
+    if devices:
+        history["devices"] = devices
+    zones = fetch_hr_zone_limits(client)
+    if zones:
+        history["hr_zone_limits"] = zones
 
     print(f"Bem-estar ({days} dias)...")
     for i in range(days):

@@ -30,6 +30,27 @@ jobs:
       - name: Sincronizar dados
         run: python3 sync.py 30
 
+      - name: Verificar dados sincronizados
+        run: |
+          python3 - <<'EOF'
+          import json, sys
+          h = json.load(open("garmin/history.json"))
+          acts  = len(h.get("activities", {}))
+          well  = len(h.get("wellness", {}))
+          zones = bool(h.get("hr_zone_limits", {}).get("zones"))
+          devs  = len(h.get("devices", []))
+          today = sorted(h.get("wellness", {}).items(), reverse=True)
+          today_data = next(((d,w) for d,w in today if w.get("sleep_score") or w.get("hrv_avg") or w.get("rhr")), None)
+          print(f"✓ {acts} atividades | {well} dias bem-estar | zonas FC: {zones} | {devs} dispositivos")
+          if today_data:
+              d, w = today_data
+              print(f"✓ Hoje ({d}): sono={w.get('sleep_score')} HRV={w.get('hrv_avg')} FC={w.get('rhr')} battery={w.get('body_battery_charged')}")
+          if acts == 0:
+              print("ERRO: nenhuma atividade sincronizada"); sys.exit(1)
+          if well == 0:
+              print("ERRO: nenhum dia de bem-estar"); sys.exit(1)
+          EOF
+
       - name: Salvar history.json no repositório
         run: |
           git config user.name "github-actions[bot]"
