@@ -48,9 +48,9 @@ def main():
     print()
     print("Conectando ao Garmin Connect...")
     try:
-        client = Garmin(email, password, prompt_mfa=prompt_mfa,
-                        token_store=str(TOKEN_DIR))
-        client.login()
+        # token_store é argumento de login(), NÃO do construtor
+        client = Garmin(email, password, prompt_mfa=prompt_mfa)
+        client.login(tokenstore=str(TOKEN_DIR))
     except Exception as e:
         print(f"\nERRO ao fazer login: {e}")
         print("Verifique e-mail, senha e conexão com a internet.")

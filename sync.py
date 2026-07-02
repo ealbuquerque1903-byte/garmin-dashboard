@@ -3,12 +3,14 @@
 Garmin Sync — coleta treinos + bem-estar do Garmin Connect
 e salva tudo em garmin/history.json
 
-Versão garminconnect: 0.3.6
-  - Autenticação nativa (sem garth), tokens em .garmin_tokens_v3/garmin_tokens.json
-  - Refresh automático de tokens a cada run (rotação pelo Garmin); workflow persiste
-    token atualizado de volta ao Secret GARMIN_TOKENS via gh CLI
-  - Todos os métodos usados têm assinatura idêntica à v0.2.8
-  - display_name: disponível como atributo após login; fallback via connectapi mantido
+Versão garminconnect: 0.3.6 — descobertas inspecionando o código instalado:
+  - Garmin.__init__(email, password, prompt_mfa, ...) — SEM token_store/tokenstore
+  - Garmin.login(tokenstore="/path") — tokenstore é argumento de login(), não do construtor
+    → se tokenstore aponta para diretório com tokens válidos, carrega e faz refresh automático
+    → se vazio/inválido, faz login completo com credenciais (requer email+password)
+    → tokens são salvos/atualizados automaticamente em tokenstore após cada login/refresh
+  - display_name: populado por _load_profile_and_settings() dentro de login(); não requer fallback manual
+  - Todos os métodos de busca de dados têm assinatura idêntica à v0.2.8
   - Grava auth_failed.flag se detectar erro de autenticação (para alerta por e-mail no CI)
 """
 
@@ -94,10 +96,11 @@ def load_client():
         raise SystemExit(1)
 
     try:
-        # token_store aponta para o diretório; lib carrega garmin_tokens.json automaticamente.
-        # login() sem credenciais recarrega do store e renova o access token se necessário.
-        client = Garmin(token_store=str(token_path))
-        client.login()
+        # tokenstore é argumento de login(), não do construtor.
+        # Com tokenstore apontando para diretório com tokens válidos, login() carrega
+        # e renova automaticamente sem precisar de email/senha.
+        client = Garmin()
+        client.login(tokenstore=str(token_path))
     except Exception as e:
         err = str(e).lower()
         is_auth = any(w in err for w in (
@@ -115,7 +118,8 @@ def load_client():
             print(f"Erro ao carregar tokens: {e}")
         raise SystemExit(1)
 
-    # display_name: disponível como atributo em 0.3.6; fallback via API se vazio
+    # display_name é populado por login() via _load_profile_and_settings().
+    # Fallback via API mantido por segurança caso o perfil não venha no payload.
     if not getattr(client, "display_name", None):
         try:
             prof = client.connectapi("/userprofile-service/socialProfile")
