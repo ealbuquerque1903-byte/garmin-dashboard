@@ -42,7 +42,7 @@ jobs:
       - name: Python 3.11
         uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
 
       - name: Instalar dependências
         run: pip install -r requirements.txt
@@ -67,6 +67,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GH_PAT_SECRETS }}
           GARMIN_TOKENS_ORIGINAL: ${{ secrets.GARMIN_TOKENS }}
         run: |
+          [ -f .garmin_tokens_v3/garmin_tokens.json ] || { echo "Tokens não gerados neste run — nada a persistir."; exit 0; }
           HASH_ORIG=$(printf '%s' "$GARMIN_TOKENS_ORIGINAL" | sha256sum | cut -d' ' -f1)
           HASH_NEW=$(sha256sum .garmin_tokens_v3/garmin_tokens.json | cut -d' ' -f1)
           if [ "$HASH_ORIG" != "$HASH_NEW" ]; then
