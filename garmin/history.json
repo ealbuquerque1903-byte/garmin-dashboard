@@ -130,8 +130,8 @@
       "hrv_status": "BALANCED",
       "rhr": 50,
       "body_battery_charged": 58,
-      "body_battery_drained": 63,
-      "stress_avg": 18,
+      "body_battery_drained": 64,
+      "stress_avg": 19,
       "training_readiness_score": 44,
       "training_readiness_level": "LOW",
       "steps": 11744
