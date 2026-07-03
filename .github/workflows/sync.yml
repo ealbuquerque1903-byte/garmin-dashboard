@@ -29,9 +29,11 @@ jobs:
 
     steps:
       - name: Validar input data (modo dia)
-        if: ${{ inputs.report_type == 'dia' }}
+        if: inputs.report_type == 'dia'
+        env:
+          INPUT_DATA: ${{ inputs.data }}
         run: |
-          if [ -z "${{ inputs.data }}" ]; then
+          if [ -z "$INPUT_DATA" ]; then
             echo "ERRO: report_type=dia requer o campo 'data' preenchido (YYYY-MM-DD)."
             exit 1
           fi
@@ -108,11 +110,14 @@ jobs:
              git push)
 
       - name: Gerar relatórios PDF
+        env:
+          REPORT_TYPE: ${{ inputs.report_type }}
+          REPORT_DATA: ${{ inputs.data }}
         run: |
-          if [ "${{ inputs.report_type }}" = "dia" ]; then
-            python3 report.py dia "${{ inputs.data }}"
+          if [ "$REPORT_TYPE" = "dia" ]; then
+            python3 report.py dia "$REPORT_DATA"
           else
-            python3 report.py ${{ inputs.report_type }}
+            python3 report.py "$REPORT_TYPE"
           fi
 
       - name: Enviar e-mail com relatórios

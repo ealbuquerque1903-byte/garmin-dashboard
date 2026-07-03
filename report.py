@@ -659,11 +659,9 @@ def main():
         except ValueError:
             print(f"ERRO: data inválida '{data_str}'. Use o formato YYYY-MM-DD.")
             raise SystemExit(1)
-        atividades_dia = [
-            a for a in history.get("activities", {}).values()
-            if a.get("date") == data_str
-        ]
-        print(f"Gerando PDFs para {data_str} ({len(atividades_dia)} atividade(s))...")
+        all_acts = list(history.get("activities", {}).values())
+        atividades_dia = [a for a in all_acts if a.get("date") == data_str]
+        print(f"Modo dia: data-alvo='{data_str}', atividades no history: {len(all_acts)}, encontradas na data: {len(atividades_dia)}")
         for act in atividades_dia:
             pdf_atividade(act, history)
         if not atividades_dia:
