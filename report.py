@@ -266,20 +266,21 @@ def splits_table(laps):
 
 def zones_table(zone_secs, zone_limits):
     """Tabela de zonas: nome, piso, teto, tempo, %."""
-    total = sum(s or 0 for s in zone_secs)
+    total = sum(int(round(s or 0)) for s in zone_secs)
     headers = ["Zona", "Piso (bpm)", "Teto (bpm)", "Tempo", "%"]
     rows = [headers]
     zlimits = (zone_limits or {}).get("zones", [])
     for i, s in enumerate(zone_secs):
-        zl = zlimits[i] if i < len(zlimits) else {}
-        mins = (s or 0) // 60
-        secs = (s or 0) % 60
-        pct  = f"{(s or 0) / total * 100:.0f}%" if total else "—"
+        zl       = zlimits[i] if i < len(zlimits) else {}
+        secs_int = int(round(s or 0))
+        mins     = secs_int // 60
+        rem      = secs_int % 60
+        pct      = f"{secs_int / total * 100:.0f}%" if total else "—"
         rows.append([
             ZONE_NAMES[i],
             val(zl.get("floor")),
             val(zl.get("ceil")),
-            f"{mins}:{secs:02d} min",
+            f"{mins}:{rem:02d} min",
             pct,
         ])
     widths = [4.5*cm, 2.5*cm, 2.5*cm, 3*cm, 2*cm]
